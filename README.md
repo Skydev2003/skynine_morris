@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Morris Club
 
-## Getting Started
+เว็บเกม Nine Men’s Morris ภาษาไทยสำหรับสองคน ใช้ Next.js, Zustand และ Supabase
 
-First, run the development server:
+## ตั้งค่าในเครื่อง
 
-```bash
+ใช้ Node.js 24 คัดลอก `.env.example` เป็น `.env` แล้วกำหนดค่าจากโปรเจกต์ Supabase
+
+| ตัวแปร | การใช้งาน |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL pooler สำหรับเซิร์ฟเวอร์ Next.js |
+| `DIRECT_URL` | การเชื่อมต่อสำหรับรัน migration |
+| `NEXT_PUBLIC_SUPABASE_URL` | URL ของ Supabase สำหรับ Auth และ Realtime |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable key สำหรับเบราว์เซอร์ |
+| `CRON_SECRET` | สำรองสำหรับงานตามเวลา |
+
+รันไฟล์ใน [supabase/migrations](supabase/migrations) ผ่าน SQL Editor หรือใช้ `DIRECT_URL` กับเครื่องมือ migration ที่รองรับ จากนั้นเปิด Email Provider ใน Supabase Auth หากเปิดการยืนยันอีเมล ให้ตั้ง Site URL, Redirect URLs และ [Custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp) สำหรับส่งอีเมลให้ผู้เล่นทั่วไป
+
+```sh
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+เปิด [localhost:3000](http://localhost:3000) แล้วสมัครหรือเข้าสู่ระบบด้วยอีเมลและรหัสผ่าน ผู้เล่นคนแรกสร้างห้องเป็นโฮสต์และส่งรหัส 6 ตัวให้เพื่อนกรอกในหน้าเข้าร่วม สถิติชนะและผลล่าสุด 12 เกมแสดงจากปุ่มถ้วยบนแถบด้านบน
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+เซิร์ฟเวอร์ตรวจสมาชิกห้อง ตาเดิน การจับหมาก และเวอร์ชันก่อนบันทึก Supabase Realtime ส่งข้อมูลให้เฉพาะสมาชิกห้องผ่าน RLS ผลเกมอยู่ในแถวเดียวกับห้องจึงนับชัยชนะได้ครั้งเดียวต่อเกม
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deploy บน Vercel
 
-## Learn More
+เลือก Next.js และ Node.js 24 แล้วใส่ `DATABASE_URL` เป็น Secret และตัวแปร `NEXT_PUBLIC_SUPABASE_*` ทั้งสองค่าใน Environment Variables ก่อน deploy ด้วย `vercel deploy --prod`
 
-To learn more about Next.js, take a look at the following resources:
+## ตรวจงาน
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```sh
+npm test
+npm run lint
+npm run build
+```
