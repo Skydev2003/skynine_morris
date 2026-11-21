@@ -550,15 +550,32 @@ dialog p { color: var(--soft); margin: 8px 0 12px; }
   box-shadow: 0 3px 0 #43285f;
 }
 .game-ticket :is(.feedback, .success) { font-size: 16px; font-weight: 650; }
-.access-world { padding-block: 26px; }
+.access-world { padding-block: max(72px, calc(env(safe-area-inset-top) + 62px)) 26px; }
 .access-actions .title-option { padding-inline: clamp(12px, 2vw, 20px); }
 .access-actions .title-option:disabled { background: #322346df; opacity: 1; color: #e3d7ef; text-shadow: none; }
 .access-actions .title-play:disabled { border-color: #bba7cf; box-shadow: none; }
-.access-actions .lottie-loading { width: 44px; height: 24px; }
+.google-signin {
+  width: clamp(46px, 5vw, 54px); aspect-ratio: 1; border: 0; border-radius: 8px;
+  background: url("/google-signin.svg") center / contain no-repeat;
+  box-shadow: 0 3px 10px #48365d44; transition: box-shadow .16s ease;
+}
+.google-signin:hover:not(:disabled) { box-shadow: 0 4px 14px #48365d73; }
+.google-signin:disabled { opacity: .65; }
 .access-note {
   padding: 3px 9px; border-radius: 8px; background: #33234be8;
   color: #fff3df; font-size: 15px; font-weight: 750;
 }
+.game-details {
+  width: min(100% - 24px, 550px);
+  padding: clamp(16px, 4vw, 26px); background: #fff8f0;
+  font-size: clamp(15px, 2.2vw, 17px);
+}
+.game-details .dialog-heading h2 { color: #543377; font-size: clamp(25px, 4vw, 34px); font-weight: 900; }
+.game-details .dialog-heading .icon-button { flex: none; width: 44px; height: 44px; }
+.game-details .rules { margin-top: 16px; }
+.game-details .rules strong { color: #4b3269; font-weight: 850; }
+.game-details .game-details-clock { margin-block: 14px; color: #663f15; font-weight: 750; }
+.game-details-credit { padding-top: 10px; border-top: 1px solid #e9d5e3; color: #604674; font-size: 15px; }
 .access-menu:has(.access-ticket) h1 { font-size: clamp(50px, 11svh, 105px); }
 .access-ticket { text-align: left; }
 .ticket-heading {

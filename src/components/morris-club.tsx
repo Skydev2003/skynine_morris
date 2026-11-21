@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AuthScreen } from "./auth-screen";
+import { Dialog } from "./dialog";
+import { GameDetails } from "./game-details";
 import { Leaderboard } from "./leaderboard";
 import { MatchResult } from "./match-result";
 import { MatchStage } from "./match-stage";
 import { PlayerAvatar, PlayerProfile } from "./player-profile";
 import { RoomLobby } from "./room-lobby";
 import { GameLottie } from "./game-lottie";
-import { ArrowLeft, ArrowRight, BookOpen, LogOut, Shuffle, Swords, Trophy, Volume2, VolumeX, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, LogOut, Shuffle, Swords, Trophy, Volume2, VolumeX } from "lucide-react";
 import { captures, placing, play, targets, type Action } from "@/lib/morris";
 import { browserDb, googleInviteKey, onlineConfigured } from "@/lib/browser-db";
 import { playerName, roomCode, turnSeconds, type Match, type Room } from "@/lib/rooms";
@@ -18,24 +20,6 @@ import { useMatchmaking } from "@/lib/use-matchmaking";
 import { useMorris } from "@/lib/store";
 
 type Modal = "rules" | "history" | "leaderboard";
-
-function Dialog({ children, title, close }: { children: ReactNode; title: string; close: () => void }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    dialog.current?.showModal();
-  }, []);
-  return (
-    <dialog ref={dialog} onClose={close} aria-label={title} onClick={(event) => {
-      if (event.target === event.currentTarget) {
-        const rect = event.currentTarget.getBoundingClientRect();
-        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) close();
-      }
-    }}>
-      <div className="dialog-heading"><h2>{title}</h2><button className="icon-button" onClick={close} aria-label="ปิด"><X /></button></div>
-      {children}
-    </dialog>
-  );
-}
 
 export default function MorrisClub() {
   const state = useMorris();
@@ -401,14 +385,7 @@ export default function MorrisClub() {
 
       {modal === "leaderboard" && <Dialog title="อันดับโลก" close={() => setModal(null)}><Leaderboard /></Dialog>}
 
-      {modal === "rules" && <Dialog title="วิธีเล่น Morris" close={() => setModal(null)}>
-        <ol className="rules">
-          <li><strong>วางหมาก</strong><p>ผลัดกันวางหมากคนละ 1 ตัวลงในจุดว่าง แต่ละฝ่ายมีหมาก 9 ตัว</p></li>
-          <li><strong>สร้างมิลล์และจับหมาก</strong><p>เรียงหมากสีเดียวกัน 3 ตัวตามเส้นแนวนอนหรือแนวตั้ง แล้วนำหมากคู่แข่งออก 1 ตัว หมากในมิลล์จะถูกป้องกัน เว้นแต่หมากของคู่แข่งทุกตัวอยู่ในมิลล์</p></li>
-          <li><strong>เลื่อนหรือบิน</strong><p>เมื่อวางหมากครบ ให้เลื่อนหมากไปยังจุดว่างที่ติดกันตามเส้น เมื่อเหลือ 3 ตัว สามารถบินไปยังจุดว่างใดก็ได้</p></li>
-          <li><strong>ชนะเกม</strong><p>หลังวางครบทั้งสองฝ่าย คุณชนะเมื่อคู่แข่งเหลือน้อยกว่า 3 ตัว หรือไม่มีตาเดินที่ถูกกติกา</p></li>
-        </ol>
-      </Dialog>}
+      {modal === "rules" && <GameDetails title="วิธีเล่น Morris" close={() => setModal(null)} />}
 
       {modal === "history" && <Dialog title="ประวัติการแข่งขัน" close={() => setModal(null)}>
         <div className="history-total"><Trophy /> <strong>{wins}</strong> ชนะทั้งหมด</div>

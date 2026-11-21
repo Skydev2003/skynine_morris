@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Mail } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Eye, EyeOff, Mail } from "lucide-react";
 import { browserDb, googleInviteKey, googleSignInEnabled } from "@/lib/browser-db";
 import { useMorris } from "@/lib/store";
 import { GameLottie } from "./game-lottie";
+import { GameDetails } from "./game-details";
 
 export function AuthScreen({ configured }: { configured: boolean }) {
   const [emailOpen, setEmailOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [googleEnabled, setGoogleEnabled] = useState<boolean | null>(null);
   const [googlePending, setGooglePending] = useState(false);
   const [signup, setSignup] = useState(false);
@@ -33,7 +35,7 @@ export function AuthScreen({ configured }: { configured: boolean }) {
 
   async function signInWithGoogle() {
     const db = browserDb();
-    if (!db || googlePending) return;
+    if (!db || pending || googlePending) return;
     setGooglePending(true);
     setFeedback(null);
     try {
@@ -55,7 +57,7 @@ export function AuthScreen({ configured }: { configured: boolean }) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const db = browserDb();
-    if (!db || pending) return;
+    if (!db || pending || googlePending) return;
     setFeedback(null);
     setPending(true);
     try {
@@ -95,18 +97,21 @@ export function AuthScreen({ configured }: { configured: boolean }) {
 
   return (
     <main className="game-world menu-world title-world access-world">
+      <div className="world-corner corner-right">
+        <button className="google-signin" type="button" aria-label="เข้าสู่ระบบด้วย Google"
+          title={googleEnabled === false ? "Google ยังไม่เปิดให้ใช้งาน" : "เข้าสู่ระบบด้วย Google"}
+          disabled={!configured || googleEnabled === false || pending || googlePending}
+          aria-busy={googlePending} onClick={() => void signInWithGoogle()} />
+      </div>
       <section className="title-menu access-menu" aria-labelledby="access-title">
         <h1 id="access-title"><span>Morris</span> <span>Club</span></h1>
-        {!emailOpen ? <div className="title-actions access-actions" aria-label="วิธีเข้าสู่สนาม">
-          <button className={`title-option${googleEnabled !== false ? " title-play" : ""}`} type="button"
-            disabled={!configured || googleEnabled === false || googlePending}
-            onClick={() => void signInWithGoogle()}>
-            {googlePending ? <><GameLottie kind="loading" /> กำลังเปิด Google</> : "เข้าสู่ระบบด้วย Google"}
-          </button>
-          {configured && googleEnabled === false && <p className="access-note">Google ยังไม่เปิดให้ใช้งาน</p>}
-          <button className={`title-option${googleEnabled === false ? " title-play" : ""}`} type="button"
+        {!emailOpen ? <div className="title-actions access-actions" role="group" aria-label="เมนูหน้าเข้าเกม">
+          <button className="title-option title-play" type="button"
             disabled={googlePending} onClick={() => { setEmailOpen(true); setFeedback(null); }}>
             <Mail aria-hidden="true" /> เล่นด้วยอีเมล
+          </button>
+          <button className="title-option" type="button" aria-haspopup="dialog" onClick={() => setDetailsOpen(true)}>
+            <BookOpen aria-hidden="true" /> รายละเอียดเกม
           </button>
         </div> : <div className="game-ticket access-ticket">
           <div className="ticket-heading">
@@ -127,13 +132,16 @@ export function AuthScreen({ configured }: { configured: boolean }) {
                 placeholder={signup ? "อย่างน้อย 8 ตัวอักษร" : "กรอกรหัสผ่าน"} value={password} onChange={(event) => setPassword(event.target.value)} />
               <button type="button" onClick={() => setVisible(!visible)} aria-label={visible ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}>{visible ? <EyeOff /> : <Eye />}</button>
             </div>
-            <button className="primary wide auth-cta" disabled={pending || !configured}>{pending ? <><GameLottie kind="loading" /> กำลังดำเนินการ</> : <>{signup ? "สร้างบัญชี" : "เข้าสู่สนาม"}<ArrowRight /></>}</button>
+            <button className="primary wide auth-cta" disabled={pending || googlePending || !configured}>{pending ? <><GameLottie kind="loading" /> กำลังดำเนินการ</> : <>{signup ? "สร้างบัญชี" : "เข้าสู่สนาม"}<ArrowRight /></>}</button>
           </form>
           {feedback && <p className={feedback.error ? "feedback" : "success"} role={feedback.error ? "alert" : "status"}>{feedback.text}</p>}
         </div>}
+        {configured && googleEnabled === false && <p className="access-note" role="status">Google ยังไม่เปิดให้ใช้งาน</p>}
+        {googlePending && <p className="access-note" role="status">กำลังเปิด Google</p>}
         {!configured && <p className="title-error" role="status">ยังไม่ได้ตั้งค่าระบบเข้าสู่เกม</p>}
         {!emailOpen && feedback && <p className="title-error" role="alert">{feedback.text}</p>}
       </section>
+      {detailsOpen && <GameDetails close={() => setDetailsOpen(false)} />}
     </main>
   );
 }
