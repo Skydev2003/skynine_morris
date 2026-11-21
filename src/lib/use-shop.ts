@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ShopState } from "./shop";
+import type { ProfileFrame, ShopItem, ShopState } from "./shop";
 import { useMorris } from "./store";
 
 export function useShop(userId: string | undefined, finished: string | null | undefined) {
   const [snapshot, setSnapshot] = useState<{ userId: string; state?: ShopState; error?: string }>();
   const version = useRef(0);
 
-  const request = useCallback(async (command: { op: "state" } | { op: "buy"; kind: "character" | "color"; id: string }) => {
+  const request = useCallback(async (command: { op: "state" } | { op: "buy"; kind: ShopItem["kind"]; id: string } | { op: "equip"; id: ProfileFrame | null }) => {
     const session = useMorris.getState().session;
     if (!userId || session?.user.id !== userId) throw new Error("กรุณาเข้าสู่ระบบก่อน");
     const revision = ++version.current;
@@ -21,8 +21,8 @@ export function useShop(userId: string | undefined, finished: string | null | un
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "เปิดร้านค้าไม่สำเร็จ");
-      if ((command.op === "buy" || revision === version.current) && useMorris.getState().session?.user.id === userId) {
-        if (command.op === "buy") version.current++;
+      if ((command.op !== "state" || revision === version.current) && useMorris.getState().session?.user.id === userId) {
+        if (command.op !== "state") version.current++;
         setSnapshot({ userId, state: data as ShopState });
       }
     } catch (error) {

@@ -1,17 +1,21 @@
 .club-world {
   --club-cream: #fff2d7;
   --club-fg: #fff6f2;
-  --club-lilac: #e9c9ff;
+  --club-ink: #12394b;
+  --ink: var(--club-ink);
   justify-items: center;
   color: var(--club-fg);
   background:
-    linear-gradient(90deg, #24173e 3%, #2e204bdc 42%, #3d2a6766 85%),
-    linear-gradient(0deg, #211736 4%, transparent 75%),
-    #3a2a65 url("/stadium.jpg") center / cover;
+    linear-gradient(90deg, #12384fe8 0%, #12455b91 37%, transparent 72%),
+    linear-gradient(0deg, #184655cf, transparent 48%),
+    #78b6ca url("/stadium.jpg") center / cover;
   padding-inline: clamp(24px, 5vw, 100px);
 }
 
-.club-world .hud-button { color: var(--ink); }
+.club-world .hud-button { color: var(--club-ink); }
+.club-world .title-profile { color: var(--club-ink); box-shadow: 0 4px 0 #5797a1, 0 8px 16px #153d4a50; }
+.club-world .title-profile:hover:not(:disabled) { background: #d8f8ea; }
+.club-world .player-avatar:not(.avatar-frame) { color: #215468; background: #c8f2e6; }
 
 .club-audio {
   display: inline-flex;
@@ -19,18 +23,18 @@
   justify-content: center;
   gap: 7px;
   min-height: 43px;
-  border: 2px solid #a67dcc;
+  border: 2px solid #9de7df;
   border-radius: 13px;
   padding: 5px 9px;
-  background: linear-gradient(#493465, #2c1e41);
-  color: #ecdaff;
-  box-shadow: 0 3px 0 #251736, inset 0 1px #ffffff30;
+  background: linear-gradient(#28788c, #175266);
+  color: #eefcff;
+  box-shadow: 0 3px 0 #143a4a, inset 0 1px #ffffff30;
   transition: translate .16s, box-shadow .16s;
 }
 
 .club-audio[data-playing="true"] { color: #fff0b2; border-color: #ffd284; }
 .club-audio:hover { translate: 0 -2px; }
-.club-audio:active { translate: 0 2px; box-shadow: 0 1px 0 #251736; }
+.club-audio:active { translate: 0 2px; box-shadow: 0 1px 0 #143a4a; }
 .club-audio:focus-visible { outline-color: #fff0b2; }
 .club-audio svg { width: 18px; height: 18px; }
 .club-audio-meter { display: flex; align-items: center; gap: 2px; height: 13px; }
@@ -58,16 +62,16 @@
   color: var(--club-cream);
   font: 700 clamp(44px, 8.2vw, 122px) / .9 Fredoka, "Noto Sans Thai", sans-serif;
   letter-spacing: -.032em;
-  text-shadow: 0 4px 0 #523068, 0 12px 26px #1d12396b;
+  text-shadow: 0 4px 0 #20556a, 0 12px 26px #14374975;
 }
 
-.club-home-title span { color: #ffc6e6; display: block; }
+.club-home-title span { color: #a6f4de; display: block; }
 
 .club-greeting {
   margin: 14px 0 22px;
   min-width: 0;
   overflow-wrap: anywhere;
-  color: #eee1fd;
+  color: #f0fffb;
   font-size: clamp(17px, 2vw, 23px);
 }
 
@@ -90,9 +94,9 @@
   justify-content: flex-start;
   border: 2px solid #fff1c9;
   padding: 8px clamp(8px, 1.6vw, 18px);
-  color: #42285e;
+  color: #503711;
   background: linear-gradient(165deg, #fff1bf, #ffc66f);
-  box-shadow: 0 6px 0 #a97266, 0 0 26px #ffd59c35, inset 0 -3px #cf87393b, 0 13px 22px #100c2e65;
+  box-shadow: 0 6px 0 #a97266, 0 0 26px #ffd59c35, inset 0 -3px #cf87393b, 0 13px 22px #153c4e69;
   font-size: clamp(21px, 3vw, 33px);
   font-weight: 900;
 }
@@ -122,24 +126,57 @@
 .club-room-actions button,
 .club-home-nav button {
   min-height: 47px;
-  border: 1px solid #bfa1d875;
+  border: 1px solid #bef4e8;
   padding: 6px 10px;
-  background: linear-gradient(#694787, #452f62);
-  color: #fff4ff;
-  box-shadow: 0 3px 0 #2b1c40, inset 0 1px #ffffff29;
+  background: linear-gradient(#d9fcf0, #9be9dc);
+  color: var(--club-ink);
+  box-shadow: 0 3px 0 #468b91, inset 0 1px #ffffff29;
   font-size: clamp(15px, 1.8vw, 20px);
   font-weight: 810;
 }
 
 .club-room-actions button[aria-expanded="true"],
 .club-room-actions button:hover:not(:disabled),
-.club-home-nav button:hover:not(:disabled) { border-color: #f0cfff; background: #65418b; }
+.club-home-nav button:hover:not(:disabled) { border-color: #fff6d7; background: #eefdf3; }
 
 .club-world :is(.club-quick-play, .club-room-actions button, .club-home-nav button):hover:not(:disabled) { translate: 0 -2px; }
 .club-world :is(.club-quick-play, .club-room-actions button, .club-home-nav button):active:not(:disabled) { translate: 0 1px; }
 .club-world :is(.club-quick-play, .club-room-actions button, .club-home-nav button):disabled { opacity: .67; }
 .club-world :is(.club-quick-play, .club-room-actions button, .club-home-nav button):focus-visible { outline-color: #ffe7b3; }
-.club-world .title-join { margin-top: 10px; }
+.club-world .title-join {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px 8px;
+  margin-top: 12px;
+  padding: 9px 10px 10px;
+  border: 1px solid #9be9dc;
+  border-radius: 13px;
+  background: #173e51;
+  color: #f1fff9;
+  box-shadow: 0 5px 12px #12394b55;
+}
+.club-world .title-join[hidden] { display: none; }
+.title-join label { grid-column: 1 / -1; padding-inline: 2px; font-size: 14px; font-weight: 780; }
+.title-join input, .title-join button { min-height: 44px; font-size: clamp(16px, 1.9vw, 20px); }
+.title-join input { background: #fbfff8; border-color: #b1dfdc; }
+.title-join input::placeholder { color: #48646a; opacity: 1; }
+.title-join input:not(:placeholder-shown) { font-variant-numeric: tabular-nums; letter-spacing: .12em; font-weight: 750; }
+.title-join button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid #fce7ad;
+  border-radius: 10px;
+  padding-inline: clamp(7px, 1.1vw, 15px);
+  background: #ffe39c;
+  color: #4f360e;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.title-join button:hover:not(:disabled) { background: #fff0c6; }
+.title-join button:disabled { border-color: #80a6ae; background: #476c77; color: #f0fafb; }
+.title-join :is(input, button):focus-visible { outline: 2px solid #fff3bf; outline-offset: 2px; }
 .club-world .title-error { margin-top: 8px; }
 
 .club-home-nav {
@@ -151,34 +188,34 @@
 }
 
 .club-home-nav button {
-  --club-tile: #f8c9ef;
+  --club-tile: #ffceb7;
   position: relative;
   min-height: 79px;
   gap: 6px;
   flex-direction: column;
   padding: 7px 6px 8px;
-  border-color: #c9a6dd;
-  background: linear-gradient(#503760, #2c1f41);
+  border-color: #f6fff7;
+  background: linear-gradient(#fafff4, #c2edf1);
   line-height: 1.2;
-  box-shadow: 0 4px 0 #21152e, inset 0 1px #ffffff30, 0 9px 16px #17102059;
+  box-shadow: 0 4px 0 #508997, inset 0 1px #ffffff30, 0 9px 16px #17455759;
 }
 .club-home-nav button:nth-child(2) { --club-tile: #ffd993; }
 .club-home-nav button:nth-child(3) { --club-tile: #b9f3d9; }
-.club-home-nav button:nth-child(4) { --club-tile: #cfddff; }
+.club-home-nav button:nth-child(4) { --club-tile: #afdcfa; }
 .club-home-nav button > svg {
   width: 33px;
   height: 33px;
   padding: 6px;
   border-radius: 10px;
-  color: #35264e;
+  color: #12394b;
   background: var(--club-tile);
-  box-shadow: inset 0 -2px #35264e35;
+  box-shadow: inset 0 -2px #12394b35;
 }
 .club-home-nav small {
   position: absolute; top: 5px; right: 5px;
   display: inline-grid; place-items: center;
   min-width: 20px; min-height: 20px; padding-inline: 4px;
-  background: var(--club-tile); color: #36234b;
+  background: var(--club-tile); color: #12394b;
   border-radius: 7px; font-size: 11px; font-variant-numeric: tabular-nums;
 }
 
@@ -196,9 +233,9 @@
 
 .club-preview-halo {
   position: absolute; inset: 6% 1%;
-  border: 1px solid #efd8ff6e;
+  border: 1px solid #e1fffbc2;
   border-radius: 50%;
-  background: radial-gradient(ellipse, #ffd2ac5c 12%, #cfacfe31 48%, transparent 72%);
+  background: radial-gradient(ellipse, #ffd2ac5c 12%, #b4ffe259 48%, transparent 72%);
   transform: rotate(-12deg);
   animation: club-halo-breathe 5.4s ease-in-out infinite alternate;
 }
@@ -211,7 +248,7 @@
 }
 
 .club-preview .board { width: 100%; }
-.club-preview .board::before { box-shadow: 0 10px 0 #82516f, 0 21px 31px #1d102765; }
+.club-preview .board::before { box-shadow: 0 10px 0 #a97155, 0 21px 31px #23455465; }
 .club-preview-table .point[data-point="1"] span { animation: club-piece-land 2.7s cubic-bezier(.3,.8,.3,1) infinite; }
 
 .club-preview-mill {
@@ -232,7 +269,7 @@
   border-radius: 16px;
   background-position: center 28%;
   background-size: cover;
-  box-shadow: 0 8px 14px #22133458;
+  box-shadow: 0 8px 14px #23455458;
   animation: club-card-float 3.7s ease-in-out infinite alternate;
 }
 
@@ -258,9 +295,9 @@
   .club-world {
     padding: max(81px, calc(env(safe-area-inset-top) + 70px)) 16px 24px;
     background:
-      linear-gradient(120deg, #2a1c48ed, #48336666),
-      linear-gradient(0deg, #241933 5%, transparent),
-      #3a2a65 url("/stadium.jpg") center / cover;
+      linear-gradient(128deg, #153e57ce, #1e607a31 74%),
+      linear-gradient(0deg, #1c515e96, transparent 73%),
+      #78b6ca url("/stadium.jpg") center / cover;
   }
   .club-home {
     width: min(100%, 520px);

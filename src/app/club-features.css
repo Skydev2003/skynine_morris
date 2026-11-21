@@ -219,6 +219,15 @@
   background-position: center 30%;
 }
 
+.shop-art.portrait-hikaru { --shop-portrait: url("/roster/shop-hikaru.webp"); }
+.shop-art.portrait-akira { --shop-portrait: url("/roster/shop-akira.webp"); }
+.shop-art.portrait-sai { --shop-portrait: url("/roster/shop-sai.webp"); }
+
+.shop-card .shop-art:is(.portrait-hikaru, .portrait-akira, .portrait-sai) {
+  background-image: var(--shop-portrait);
+  background-size: cover;
+}
+
 .shop-card .shop-art:is(.portrait-kai, .portrait-momo) {
   background-size: 245% auto;
 }
@@ -506,4 +515,33 @@ svg.loadout-locked {
 
 @media (prefers-reduced-motion: reduce) {
   .feature-dialog[open] { animation: none; }
+}
+
+.shop-tabs { flex-wrap: wrap; }
+.shop-frame-art { background: radial-gradient(ellipse at 50% 35%, #fffff1, #d3eef0); }
+.shop-frame-art .player-avatar { width: clamp(46px, 11vw, 86px); }
+
+.frame-sunburst { --frame-light: #fff6a9; --frame-mid: #ffcd5e; --frame-edge: #a64b20; }
+.frame-tide { --frame-light: #dcfff1; --frame-mid: #50e3bb; --frame-edge: #146762; }
+.frame-comet { --frame-light: #eafbff; --frame-mid: #75d8ff; --frame-edge: #2560af; }
+.player-avatar.avatar-frame {
+  border: clamp(3px, .43vw, 6px) solid transparent;
+  background:
+    linear-gradient(#f8fffb, #d9eff2) padding-box,
+    conic-gradient(from -24deg, var(--frame-light), var(--frame-mid) 19%, var(--frame-edge) 32%, var(--frame-light) 46%,
+      var(--frame-mid) 65%, var(--frame-edge) 81%, var(--frame-light)) border-box;
+  color: #215468;
+  box-shadow: 0 0 0 1px var(--frame-edge), 0 2px 8px var(--frame-mid);
+}
+.player-avatar.avatar-frame img { border-radius: 50%; }
+
+.duelist-portrait { position: relative; }
+.duelist-portrait .player-avatar {
+  position: absolute;
+  right: 8px;
+  bottom: 7px;
+  width: clamp(44px, 5.8vw, 78px);
+}
+@media (max-width: 840px) {
+  .duelist-portrait .player-avatar { right: 5px; bottom: 4px; width: 32px; }
 }

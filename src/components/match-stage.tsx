@@ -1,16 +1,19 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
-import { CircleMinus, Sparkles, Trophy } from "lucide-react";
+import { ShieldAlert, Swords, Trophy } from "lucide-react";
 import { capturedCount, count, lastCapture, other, placing, type Side } from "@/lib/morris";
 import { emojis, type Room } from "@/lib/rooms";
 import { PieceTray } from "./piece-tray";
 import { TurnClock } from "./turn-clock";
+import type { MatchProfile } from "@/lib/shop";
 import { Board, Player } from "./morris-board";
 
-export function MatchStage({ room, confirmed, cue, side, selected, pending, reaction, error, point, react, expired }: {
+export function MatchStage({ room, confirmed, cue, side, accessToken, ownProfile, selected, pending, reaction, error, point, react, expired }: {
   room: Room;
   confirmed: Room;
   cue: (name: "place" | "capture" | "capture-hit" | "win" | "loss" | "start") => void;
   side: Side;
+  accessToken: string;
+  ownProfile: MatchProfile;
   selected: number | null;
   pending: boolean;
   reaction: Room["reaction"];
@@ -32,6 +35,28 @@ export function MatchStage({ room, confirmed, cue, side, selected, pending, reac
   const rival = other(side);
   const names = { mint: room.host_name, rose: room.guest_name };
   const canPlay = myTurn && !pending && !game.winner;
+  const { code, host_id: hostId, guest_id: guestId, local_match: localMatch } = confirmed;
+  const profileKey = `${code}:${hostId}:${guestId}`;
+  const [profileSnapshot, setProfileSnapshot] = useState<{ key: string; profiles: Partial<Record<Side, MatchProfile>> }>();
+  const rivalProfile = profileSnapshot?.key === profileKey ? profileSnapshot.profiles[rival] : undefined;
+
+  useEffect(() => {
+    if (localMatch || !guestId) return;
+    const controller = new AbortController();
+    async function loadProfiles() {
+      const response = await fetch("/api/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ op: "profiles", code }),
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(8000)]),
+      });
+      if (!response.ok) return;
+      const profiles = await response.json() as Partial<Record<Side, MatchProfile>>;
+      if (!controller.signal.aborted) setProfileSnapshot({ key: profileKey, profiles });
+    }
+    void loadProfiles().catch(() => {});
+    return () => controller.abort();
+  }, [accessToken, code, guestId, localMatch, profileKey]);
 
   const latest = lastCapture(confirmed.game);
   const at = latest?.at;
@@ -83,14 +108,14 @@ export function MatchStage({ room, confirmed, cue, side, selected, pending, reac
         </div>
       </div>
       <Player side={side} game={game} current={myTurn && !game.winner} you name={names[side]} taken={capturedCount(confirmed.game, side)}
-        character={character[side]} color={palette[side]} capturePulse={captureNotice?.by === side} />
+        character={character[side]} profile={ownProfile} color={palette[side]} capturePulse={captureNotice?.by === side} />
       <div className="table-center">
         <Board game={game} active={canPlay} selected={selected} onPoint={point} palette={palette}
           impact={captureNotice && { at: captureNotice.at, color: palette[other(captureNotice.by)], revision: captureNotice.revision, own: ownCapture }} />
-        <div className="capture-announcement" role="status" aria-atomic="true">
+        <div className="capture-announcement" role="alert" aria-atomic="true">
           {captureNotice && <div className={`capture-banner ${ownCapture ? "capture-success" : "capture-loss"}`} key={captureNotice.revision}>
-            {ownCapture ? <Sparkles aria-hidden="true" /> : <CircleMinus aria-hidden="true" />}
-            <span>{ownCapture ? "กินหมากสำเร็จ" : "คู่แข่งกินหมากของคุณ"}</span>
+            <span className="capture-emblem" aria-hidden="true">{ownCapture ? <Swords /> : <ShieldAlert />}</span>
+            <span>{ownCapture ? "กินหมากสำเร็จ" : "เสียหมาก"}</span>
             <strong>{ownCapture ? "+1" : "−1"}</strong>
           </div>}
         </div>
@@ -99,7 +124,7 @@ export function MatchStage({ room, confirmed, cue, side, selected, pending, reac
         </div>}
       </div>
       <Player side={rival} game={game} current={!myTurn && !game.winner} you={false} name={names[rival]} taken={capturedCount(confirmed.game, rival)}
-        character={character[rival]} color={palette[rival]} capturePulse={captureNotice?.by === rival} />
+        character={character[rival]} profile={rivalProfile} color={palette[rival]} capturePulse={captureNotice?.by === rival} />
       <div className="table-controls">
         <PieceTray key={`${game.turn}-${game.reserve[side]}`} count={game.reserve[side]} color={palette[side]}
           enabled={canPlay && placing(game) && !game.capture && game.reserve[side] > 0} place={point} />

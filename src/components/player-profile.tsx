@@ -4,26 +4,23 @@ import { useState, type FormEvent } from "react";
 import type { User } from "@supabase/supabase-js";
 import { Check, Copy, Trophy, UserRound } from "lucide-react";
 
-function googleAvatar(user: User) {
+import { googleAvatarUrl } from "@/lib/avatar";
+import type { ProfileFrame } from "@/lib/shop";
+
+export function googleAvatar(user: User) {
   const identity = user.identities?.find(({ provider }) => provider === "google");
   const metadata = user.app_metadata.provider === "google" ? user.user_metadata : undefined;
   const photos = [identity?.identity_data?.picture, identity?.identity_data?.avatar_url, metadata?.picture, metadata?.avatar_url];
-  for (const photo of photos) {
-    if (typeof photo !== "string") continue;
-    try {
-      const url = new URL(photo);
-      if (url.protocol === "https:" && /(^|\.)googleusercontent\.com$/.test(url.hostname) &&
-        !url.username && !url.password && !url.port) return url.href;
-    } catch {
-      continue;
-    }
-  }
+  return photos.map(googleAvatarUrl).find(Boolean);
 }
 
-export function PlayerAvatar({ user }: { user: User }) {
-  const photo = googleAvatar(user);
+export function PlayerAvatar({ user, frame }: { user: User; frame?: ProfileFrame | null }) {
+  return <ProfileAvatar photo={googleAvatar(user)} frame={frame} />;
+}
+
+export function ProfileAvatar({ photo, frame }: { photo?: string; frame?: ProfileFrame | null }) {
   const [failedPhoto, setFailedPhoto] = useState<string>();
-  return <span className="player-avatar" aria-hidden="true">
+  return <span className={`player-avatar${frame ? ` avatar-frame frame-${frame}` : ""}`} aria-hidden="true">
     {photo && failedPhoto !== photo
       // eslint-disable-next-line @next/next/no-img-element -- Load the profile image directly from Google without proxying it.
       ? <img src={photo} alt="" referrerPolicy="no-referrer" onError={() => setFailedPhoto(photo)} />
@@ -38,11 +35,12 @@ type ProfileProps = {
   pending: boolean;
   error: string;
   playerId?: string;
+  frame?: ProfileFrame | null;
   setName: (name: string) => void;
   saveName: (event: FormEvent<HTMLFormElement>) => void;
 };
 
-export function PlayerProfile({ user, wins, name, pending, error, playerId, setName, saveName }: ProfileProps) {
+export function PlayerProfile({ user, wins, name, pending, error, playerId, frame, setName, saveName }: ProfileProps) {
   const [copyStatus, setCopyStatus] = useState("");
 
   async function copyId() {
@@ -58,7 +56,7 @@ export function PlayerProfile({ user, wins, name, pending, error, playerId, setN
   return (
     <section className="game-ticket player-profile" aria-labelledby="profile-title">
       <h1 id="profile-title">โปรไฟล์ผู้เล่น</h1>
-      <PlayerAvatar user={user} />
+      <PlayerAvatar user={user} frame={frame} />
       <div className="wins"><Trophy aria-hidden="true" /><strong>{wins}</strong> ชนะ</div>
       <div className="profile-player-id">
         <span>ไอดีเกม</span><strong>{playerId ?? "–"}</strong>

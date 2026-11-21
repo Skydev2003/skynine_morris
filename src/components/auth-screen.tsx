@@ -105,7 +105,7 @@ export function AuthScreen({ configured }: { configured: boolean }) {
       <section className="title-menu access-menu" aria-labelledby="access-title">
         <h1 id="access-title"><span>Morris</span> <span>Club</span></h1>
         {!emailOpen ? <div className="title-actions access-actions" role="group" aria-label="เมนูหน้าเข้าเกม">
-          <button className="google-signin" type="button" aria-label="เข้าสู่ระบบด้วย Google"
+          <button className="google-signin" type="button" aria-label="เข้าสู่ระบบด้วย Google" title="เข้าสู่ระบบด้วย Google"
             disabled={!configured || googleEnabled === false || googlePending}
             aria-busy={googlePending} onClick={() => void signInWithGoogle()} />
           <button className="title-option" type="button"

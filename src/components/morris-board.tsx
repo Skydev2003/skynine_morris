@@ -1,3 +1,5 @@
+import type { MatchProfile } from "@/lib/shop";
+import { ProfileAvatar } from "./player-profile";
 import type { CSSProperties } from "react";
 import { captures, count, placing, points, targets, type Game, type Side } from "@/lib/morris";
 
@@ -63,7 +65,7 @@ export function Board({ game, palette, active, selected, onPoint, impact }: {
   );
 }
 
-export function Player({ side, game, current, you, character, color, name, taken, capturePulse }: {
+export function Player({ side, game, current, you, character, color, name, taken, capturePulse, profile }: {
   side: Side;
   game: Game;
   current: boolean;
@@ -73,13 +75,16 @@ export function Player({ side, game, current, you, character, color, name, taken
   color: PieceColor;
   taken: number;
   capturePulse: boolean;
+  profile?: MatchProfile;
 }) {
   const onBoard = count(game, side);
   const inHand = game.reserve[side];
   return (
     <section className={`duelist color-${color} ${you ? "duelist-you" : "duelist-rival"}${current ? " current" : ""}`} aria-label={you ? "หมากของคุณ" : "หมากคู่แข่ง"}>
       <span className="duelist-role">{you ? "คุณ" : "คู่แข่ง"}{current && <i className="color-chip" />}</span>
-      <div className={`duelist-portrait portrait-${character}`} aria-hidden="true" />
+      <div className={`duelist-portrait portrait-${character}`} aria-hidden="true">
+        {(profile?.photo || profile?.frame) && <ProfileAvatar photo={profile.photo} frame={profile.frame} />}
+      </div>
       <h2 title={name}>{name}</h2><small className="duelist-character">{characters[character]}</small>
       <div className="piece-tallies">
         <div><strong>{onBoard}</strong><span>บนกระดาน</span></div>

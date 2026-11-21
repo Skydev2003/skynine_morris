@@ -3,7 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { createGame, isAction, other, play } from "@/lib/morris";
 import { roomDb } from "@/lib/room-db";
 import { emojis, isCharacter, isPieceColor, playerName, roomCode, turnSeconds, type Room } from "@/lib/rooms";
-import { STARTER_CHARACTERS, STARTER_COLORS } from "@/lib/shop";
+import { googleAvatarUrl } from "@/lib/avatar";
+import { isProfileFrame, STARTER_CHARACTERS, STARTER_COLORS, type MatchProfile } from "@/lib/shop";
 import { getShopState } from "@/lib/shop-db";
 
 const auth = { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false };
@@ -64,6 +65,27 @@ export async function POST(request: Request) {
     }
 
     if (!side) return reply("คุณยังไม่ได้เข้าห้องนี้", 403);
+    if (input.op === "profiles") {
+      const { rows } = await db.query<{ user_id: string; photo: string | null; frame: string | null }>(
+        `select participant.user_id, coalesce(google.identity_data->>'picture', google.identity_data->>'avatar_url') as photo,
+                case when ('frame:' || wallet.equipped_frame) = any(wallet.items) then wallet.equipped_frame end as frame
+         from unnest($1::uuid[]) as participant(user_id)
+         left join public.morris_wallets as wallet using (user_id)
+         left join lateral (
+           select identity_data from auth.identities
+           where user_id = participant.user_id and provider = 'google'
+           order by created_at desc, id limit 1
+         ) as google on true`,
+        [[room.host_id, room.guest_id].filter(Boolean)],
+      );
+      const profiles: Partial<Record<"mint" | "rose", MatchProfile>> = {};
+      for (const player of rows) {
+        profiles[player.user_id === room.host_id ? "mint" : "rose"] = {
+          photo: googleAvatarUrl(player.photo), frame: isProfileFrame(player.frame) ? player.frame : null,
+        };
+      }
+      return Response.json(profiles);
+    }
     if (input.op === "loadout" || input.op === "ready" || input.op === "start") {
       if (room.started_at || input.revision !== room.revision) return conflict();
 

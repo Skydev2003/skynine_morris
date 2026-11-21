@@ -11,7 +11,7 @@ import { GameDetails } from "./game-details";
 import { Leaderboard } from "./leaderboard";
 import { MatchResult } from "./match-result";
 import { MatchStage } from "./match-stage";
-import { PlayerAvatar, PlayerProfile } from "./player-profile";
+import { googleAvatar, PlayerAvatar, PlayerProfile } from "./player-profile";
 import { RoomLobby } from "./room-lobby";
 import { GameLottie } from "./game-lottie";
 import { ArrowLeft, ArrowRight, BookOpen, DoorOpen, LogOut, Music2, ShoppingBag, Shuffle, Swords, Trophy, UsersRound, Volume2, VolumeX } from "lucide-react";
@@ -356,7 +356,7 @@ export default function MorrisClub() {
             setNameInput(name);
             setEditingName(true);
             setError("");
-          }}><PlayerAvatar user={session.user} /><span>โปรไฟล์</span></button>}
+          }}><PlayerAvatar user={session.user} frame={shop.state?.equippedFrame} /><span>โปรไฟล์</span></button>}
           {!room && editingName && name && <button className="hud-button profile-return" type="button" disabled={pending} onClick={() => {
             setEditingName(false);
             setError("");
@@ -390,9 +390,10 @@ export default function MorrisClub() {
         </aside>}
         {!room && (!name || editingName) ? (
           <PlayerProfile user={session.user} wins={wins} name={nameInput} pending={pending} error={error}
-            playerId={social.state?.playerId} setName={setNameInput} saveName={saveName} />
+            playerId={social.state?.playerId} frame={shop.state?.equippedFrame} setName={setNameInput} saveName={saveName} />
         ) : shownRoom && room && side ? room.started_at ? (
-          <MatchStage key={room.started_at} room={shownRoom} confirmed={room} cue={sound.cue} side={side} selected={selected} pending={pending} reaction={room.reaction ? reaction : null} error={error} point={point}
+          <MatchStage key={room.started_at} room={shownRoom} confirmed={room} cue={sound.cue} side={side} accessToken={session.access_token}
+            ownProfile={{ photo: googleAvatar(session.user), frame: shop.state?.equippedFrame ?? null }} selected={selected} pending={pending} reaction={room.reaction ? reaction : null} error={error} point={point}
             expired={() => {
               if (!prediction && room.turn_deadline && !room.game.winner) void send({ op: "timeout", code, version: room.game_revision });
             }}
@@ -429,7 +430,7 @@ export default function MorrisClub() {
                     if (!joinOpen) window.requestAnimationFrame(() => joinInput.current?.focus());
                   }}><DoorOpen aria-hidden="true" /> เข้าร่วมห้อง</button>
               </div>
-              <form id="title-join" className="join title-join" hidden={!joinOpen}
+              <form id="title-join" className="title-join" hidden={!joinOpen}
                 onSubmit={(event) => { event.preventDefault(); void send({ op: "join", code: joinCode }, true); }}
                 onKeyDown={(event) => {
                   if (event.key === "Escape" && !pending) {
@@ -438,10 +439,11 @@ export default function MorrisClub() {
                     joinButton.current?.focus();
                   }
                 }}>
-                <input ref={joinInput} aria-label="รหัสห้อง 6 ตัว" autoComplete="off" autoCapitalize="characters" spellCheck={false}
-                  placeholder="รหัสห้อง 6 ตัว" value={joinCode} required pattern="[A-Z0-9]{6}" maxLength={6}
+                <label htmlFor="title-room-code">กรอกรหัสห้อง 6 ตัว</label>
+                <input ref={joinInput} id="title-room-code" autoComplete="off" autoCapitalize="characters" spellCheck={false}
+                  placeholder="เช่น AB12CD" value={joinCode} required pattern="[A-Z0-9]{6}" maxLength={6}
                   onChange={(event) => setJoinCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />
-                <button className="outline" type="submit" disabled={menuBusy || !roomCode.test(joinCode)}>เข้าห้อง <ArrowRight aria-hidden="true" /></button>
+                <button type="submit" disabled={menuBusy || !roomCode.test(joinCode)}>เข้าห้อง <ArrowRight aria-hidden="true" /></button>
               </form>
               {(error || matchmaking.error) && <p className="title-error" role="alert">{error || matchmaking.error}</p>}
             </div>
@@ -478,7 +480,8 @@ export default function MorrisClub() {
 
       {modal === "shop" && <ClubShop state={shop.state} error={shop.error} close={() => setModal(null)}
         retry={() => void shop.request({ op: "state" }).catch(() => {})}
-        buy={({ kind, id }) => shop.request({ op: "buy", kind, id })} />}
+        buy={({ kind, id }) => shop.request({ op: "buy", kind, id })}
+        equip={(id) => shop.request({ op: "equip", id })} />}
 
       {modal === "history" && <Dialog title="ประวัติการแข่งขัน" close={() => setModal(null)}>
         <div className="history-total"><Trophy /> <strong>{wins}</strong> ชนะทั้งหมด</div>
