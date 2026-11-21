@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./club-features.css";
 
 export const metadata: Metadata = {
   title: "Morris Club | Nine Men’s Morris",

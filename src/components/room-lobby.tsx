@@ -1,5 +1,6 @@
-import { Check, Copy, Hourglass, Swords, UserRound } from "lucide-react";
+import { Check, Copy, Hourglass, Lock, Swords, UserPlus, UserRound } from "lucide-react";
 import { characters, colors, type Character, type PieceColor, type Room } from "@/lib/rooms";
+import { STARTER_CHARACTERS, STARTER_COLORS, type ShopState } from "@/lib/shop";
 
 type Seat = "host" | "guest";
 
@@ -25,13 +26,16 @@ function LoadoutCard({ character, color, ready, label, missing, mine, name }: {
   );
 }
 
-export function RoomLobby({ room, seat, pending, copied, copy, send }: {
+export function RoomLobby({ room, seat, pending, copied, copy, send, inventory, invite, openShop }: {
   room: Room;
   seat: Seat;
   pending: boolean;
   copied: boolean;
   copy: () => void;
   send: (command: Record<string, unknown>) => void;
+  inventory?: ShopState;
+  invite: () => void;
+  openShop: () => void;
 }) {
   const ownCharacter = room[`${seat}_character`];
   const ownColor = room[`${seat}_color`];
@@ -51,26 +55,36 @@ export function RoomLobby({ room, seat, pending, copied, copy, send }: {
         <span className="vs-emblem" aria-hidden="true">VS</span>
         <LoadoutCard character={room.guest_character} color={room.guest_color} name={room.guest_name} ready={room.guest_ready} label="ผู้เข้าร่วม" missing={!room.guest_id} mine={seat === "guest"} />
       </div>
+      {seat === "host" && !room.guest_id && <button className="outline invite-friend-lobby" type="button" onClick={invite}>
+        <UserPlus aria-hidden="true" /> ชวนเพื่อนเข้าห้อง
+      </button>}
       <div className="setup-deck">
         <fieldset disabled={pending}>
           <legend>ตัวละคร</legend>
           <div className="character-picker">
-            {(Object.keys(characters) as Character[]).map((character) => (
-              <button key={character} type="button" aria-pressed={ownCharacter === character} onClick={() => change(character, ownColor)}>
+            {(Object.keys(characters) as Character[]).map((character) => {
+              const locked = !(inventory?.ownedCharacters ?? STARTER_CHARACTERS).includes(character) && ownCharacter !== character;
+              return <button key={character} type="button" aria-pressed={ownCharacter === character}
+                aria-label={locked ? `${characters[character]} ปลดล็อกในร้านค้า` : undefined}
+                onClick={locked ? openShop : () => change(character, ownColor)}>
                 <span className={`picker-portrait portrait-${character}`} aria-hidden="true" /> {characters[character]}
-              </button>
-            ))}
+                {locked && <span className="loadout-locked"><Lock aria-hidden="true" /></span>}
+              </button>;
+            })}
           </div>
         </fieldset>
         <fieldset disabled={pending}>
           <legend>สีหมาก</legend>
           <div className="color-picker">
-            {(Object.keys(colors) as PieceColor[]).map((color) => (
-              <button type="button" key={color} className={`color-${color}`} aria-label={`สี${colors[color]}${takenColor === color ? " ถูกจอง" : ""}`}
-                aria-pressed={ownColor === color} disabled={takenColor === color} title={takenColor === color ? "สีนี้ถูกจองแล้ว" : colors[color]} onClick={() => change(ownCharacter, color)}>
-                {ownColor === color ? <Check /> : takenColor === color ? <span aria-hidden="true">–</span> : null}
-              </button>
-            ))}
+            {(Object.keys(colors) as PieceColor[]).map((color) => {
+              const locked = !(inventory?.ownedColors ?? STARTER_COLORS).includes(color) && ownColor !== color;
+              const taken = takenColor === color;
+              const label = `สี${colors[color]}${taken ? " ถูกจอง" : locked ? " ปลดล็อกในร้านค้า" : ""}`;
+              return <button type="button" key={color} className={`color-${color}`} aria-label={label}
+                aria-pressed={ownColor === color} disabled={taken} title={label} onClick={locked ? openShop : () => change(ownCharacter, color)}>
+                {ownColor === color ? <Check /> : taken ? <span aria-hidden="true">–</span> : locked ? <Lock aria-hidden="true" /> : null}
+              </button>;
+            })}
           </div>
         </fieldset>
         <div className="ready-actions">

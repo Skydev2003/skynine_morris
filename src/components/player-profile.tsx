@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import type { User } from "@supabase/supabase-js";
-import { Check, Trophy, UserRound } from "lucide-react";
+import { Check, Copy, Trophy, UserRound } from "lucide-react";
 
 function googleAvatar(user: User) {
   const identity = user.identities?.find(({ provider }) => provider === "google");
@@ -37,16 +37,34 @@ type ProfileProps = {
   name: string;
   pending: boolean;
   error: string;
+  playerId?: string;
   setName: (name: string) => void;
   saveName: (event: FormEvent<HTMLFormElement>) => void;
 };
 
-export function PlayerProfile({ user, wins, name, pending, error, setName, saveName }: ProfileProps) {
+export function PlayerProfile({ user, wins, name, pending, error, playerId, setName, saveName }: ProfileProps) {
+  const [copyStatus, setCopyStatus] = useState("");
+
+  async function copyId() {
+    if (!playerId) return;
+    try {
+      await navigator.clipboard.writeText(playerId);
+      setCopyStatus("คัดลอกไอดีแล้ว");
+    } catch {
+      setCopyStatus("เลือกข้อความไอดีเพื่อคัดลอก");
+    }
+  }
+
   return (
     <section className="game-ticket player-profile" aria-labelledby="profile-title">
       <h1 id="profile-title">โปรไฟล์ผู้เล่น</h1>
       <PlayerAvatar user={user} />
       <div className="wins"><Trophy aria-hidden="true" /><strong>{wins}</strong> ชนะ</div>
+      <div className="profile-player-id">
+        <span>ไอดีเกม</span><strong>{playerId ?? "–"}</strong>
+        <button className="outline" type="button" aria-label="คัดลอกไอดีเกม" disabled={!playerId} onClick={() => void copyId()}><Copy aria-hidden="true" /></button>
+      </div>
+      {copyStatus && <p className="feature-status" role="status">{copyStatus}</p>}
       <form className="login-form" onSubmit={saveName}>
         <label htmlFor="player-name">ชื่อที่ใช้เล่น</label>
         <input id="player-name" value={name} onChange={(event) => setName(event.target.value)}

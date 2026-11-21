@@ -98,20 +98,21 @@ export function AuthScreen({ configured }: { configured: boolean }) {
   return (
     <main className="game-world menu-world title-world access-world">
       <div className="world-corner corner-right">
-        <button className="google-signin" type="button" aria-label="เข้าสู่ระบบด้วย Google"
-          title={googleEnabled === false ? "Google ยังไม่เปิดให้ใช้งาน" : "เข้าสู่ระบบด้วย Google"}
-          disabled={!configured || googleEnabled === false || pending || googlePending}
-          aria-busy={googlePending} onClick={() => void signInWithGoogle()} />
+        <button className="hud-button game-details-button" type="button" aria-haspopup="dialog" onClick={() => setDetailsOpen(true)}>
+          <BookOpen aria-hidden="true" /> รายละเอียดเกม
+        </button>
       </div>
       <section className="title-menu access-menu" aria-labelledby="access-title">
         <h1 id="access-title"><span>Morris</span> <span>Club</span></h1>
         {!emailOpen ? <div className="title-actions access-actions" role="group" aria-label="เมนูหน้าเข้าเกม">
           <button className="title-option title-play" type="button"
+            disabled={!configured || googleEnabled === false || googlePending}
+            aria-busy={googlePending} onClick={() => void signInWithGoogle()}>
+            <span className="google-signin-mark" aria-hidden="true" /> เข้าสู่ระบบด้วย Google
+          </button>
+          <button className="title-option" type="button"
             disabled={googlePending} onClick={() => { setEmailOpen(true); setFeedback(null); }}>
             <Mail aria-hidden="true" /> เล่นด้วยอีเมล
-          </button>
-          <button className="title-option" type="button" aria-haspopup="dialog" onClick={() => setDetailsOpen(true)}>
-            <BookOpen aria-hidden="true" /> รายละเอียดเกม
           </button>
         </div> : <div className="game-ticket access-ticket">
           <div className="ticket-heading">

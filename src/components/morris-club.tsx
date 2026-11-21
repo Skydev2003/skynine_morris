@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AuthScreen } from "./auth-screen";
+import { ClubFriends, InviteActions, type SocialCommand } from "./club-friends";
+import { ClubShop } from "./club-shop";
 import { Dialog } from "./dialog";
 import { GameDetails } from "./game-details";
 import { Leaderboard } from "./leaderboard";
@@ -10,16 +12,19 @@ import { MatchStage } from "./match-stage";
 import { PlayerAvatar, PlayerProfile } from "./player-profile";
 import { RoomLobby } from "./room-lobby";
 import { GameLottie } from "./game-lottie";
-import { ArrowLeft, ArrowRight, BookOpen, LogOut, Shuffle, Swords, Trophy, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, LogOut, ShoppingBag, Shuffle, Swords, Trophy, UsersRound, Volume2, VolumeX } from "lucide-react";
 import { captures, placing, play, targets, type Action } from "@/lib/morris";
 import { browserDb, googleInviteKey, onlineConfigured } from "@/lib/browser-db";
 import { playerName, roomCode, turnSeconds, type Match, type Room } from "@/lib/rooms";
 import { useArenaAudio } from "@/lib/arena-audio";
 import { localTimeout, localTurn, opponentMove, resetOpponentMatch } from "@/lib/opponent";
 import { useMatchmaking } from "@/lib/use-matchmaking";
+import { socialApi, type SocialLookup } from "@/lib/social";
+import { useSocial } from "@/lib/use-social";
+import { useShop } from "@/lib/use-shop";
 import { useMorris } from "@/lib/store";
 
-type Modal = "rules" | "history" | "leaderboard";
+type Modal = "rules" | "history" | "leaderboard" | "friends" | "invite" | "shop";
 
 export default function MorrisClub() {
   const state = useMorris();
@@ -39,9 +44,14 @@ export default function MorrisClub() {
   const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
   const [reaction, setReaction] = useState<{ emoji: string; sender: string } | null>(null);
+  const [socialPending, setSocialPending] = useState(false);
+  const [inviteError, setInviteError] = useState("");
   const busy = useRef(false);
+  const socialBusy = useRef(false);
   const sound = useArenaAudio(Boolean(room?.started_at && !room.finished_at));
   const matchmaking = useMatchmaking(session, name, openMatch);
+  const social = useSocial(userId);
+  const shop = useShop(userId, room?.finished_at);
 
   function openMatch(next: Room) {
     const current = useMorris.getState();
@@ -51,6 +61,7 @@ export default function MorrisClub() {
     current.setJoinCode("");
     setShowJoin(null);
     setModal(null);
+    setInviteError("");
     window.history.replaceState(null, "", "/");
     setReaction(null);
     setCopied(false);
@@ -173,7 +184,7 @@ export default function MorrisClub() {
   }, [roomReaction, reactionTime]);
 
   async function send(input: Record<string, unknown>, open = false) {
-    if (!session) return;
+    if (!session || socialBusy.current) return;
     if (room?.local_match) {
       if (input.op === "end") leaveRoom();
       else if (input.op === "rematch") state.syncRoom({ ...room, host_rematch: true, revision: room.revision + 1 });
@@ -239,10 +250,37 @@ export default function MorrisClub() {
   }
 
   function leaveRoom() {
+    if (session && room && !room.started_at && room.host_id === session.user.id) {
+      void socialApi(session.access_token, { op: "closeLobby", code: room.code }, AbortSignal.timeout(8000)).catch(() => {});
+    }
     if (userId) localStorage.removeItem(`morris-room-${userId}`);
     state.exit();
     setError("");
     setReaction(null);
+    setModal(null);
+  }
+
+  function openShop() {
+    setModal("shop");
+    void shop.request({ op: "state" }).catch(() => {});
+  }
+
+  async function socialAction(command: SocialCommand) {
+    if (!session || socialBusy.current || busy.current) throw new Error("กำลังทำรายการ กรุณารอสักครู่");
+    if (command.op === "acceptInvite" && (useMorris.getState().room || matchmaking.searching)) {
+      throw new Error("กลับหน้าเมนูเพื่อรับคำเชิญเข้าห้อง");
+    }
+    socialBusy.current = true;
+    setSocialPending(true);
+    setInviteError("");
+    try {
+      const result = await socialApi<{ room: Room } | { ok: true }>(session.access_token, command, AbortSignal.timeout(10_000));
+      if ("room" in result) openMatch(result.room);
+    } finally {
+      socialBusy.current = false;
+      setSocialPending(false);
+      void social.refresh();
+    }
   }
 
   async function copy() {
@@ -296,6 +334,11 @@ export default function MorrisClub() {
 
   const titleScreen = !room && Boolean(name) && !editingName;
   const joinOpen = showJoin ?? Boolean(joinCode);
+  const waitingHost = room && !room.started_at && !room.guest_id && side === "mint" ? room.code : undefined;
+  const canJoinInvite = Boolean(!room && name && !matchmaking.searching && !pending);
+  const nextInvite = titleScreen && canJoinInvite ? social.state?.invites[0] : undefined;
+  const socialNotices = (social.state?.incoming.length ?? 0) + (social.state?.invites.length ?? 0);
+  const menuBusy = pending || matchmaking.searching || socialPending;
 
   return (
     <>
@@ -322,9 +365,17 @@ export default function MorrisClub() {
           {!titleScreen && <button className="hud-button" onClick={() => setModal("rules")} aria-label="วิธีเล่น" title="วิธีเล่น"><BookOpen /></button>}
           {!room && <button className="hud-button" onClick={signOut} disabled={pending || matchmaking.searching} aria-label="ออกจากระบบ" title="ออกจากระบบ"><LogOut /></button>}
         </div>
+        {nextInvite && <aside className="friend-invite-banner" aria-label="คำเชิญเข้าห้อง">
+          <div><strong>{nextInvite.name} ชวนคุณเข้าห้อง</strong><span>ห้อง {nextInvite.code}</span>
+            {inviteError && <p className="feature-error" role="alert">{inviteError}</p>}
+          </div>
+          <InviteActions invite={nextInvite} pending={socialPending} run={(command) => {
+            void socialAction(command).catch((error) => setInviteError(error instanceof Error ? error.message : "รับคำเชิญไม่สำเร็จ"));
+          }} />
+        </aside>}
         {!room && (!name || editingName) ? (
           <PlayerProfile user={session.user} wins={wins} name={nameInput} pending={pending} error={error}
-            setName={setNameInput} saveName={saveName} />
+            playerId={social.state?.playerId} setName={setNameInput} saveName={saveName} />
         ) : shownRoom && room && side ? room.started_at ? (
           <MatchStage key={room.started_at} room={shownRoom} confirmed={room} cue={sound.cue} side={side} selected={selected} pending={pending} reaction={room.reaction ? reaction : null} error={error} point={point}
             expired={() => {
@@ -334,6 +385,7 @@ export default function MorrisClub() {
         ) : (
           <>
             <RoomLobby room={room} seat={side === "mint" ? "host" : "guest"} pending={pending} copied={copied} copy={copy}
+              inventory={shop.state} openShop={openShop} invite={() => { setModal("invite"); void social.refresh(); }}
               send={(command) => void send({ ...command, code, revision: room.revision })} />
             {error && <p className="stage-error" role="alert">{error}</p>}
           </>
@@ -345,13 +397,13 @@ export default function MorrisClub() {
                 <div className="queue-status" role="status"><GameLottie kind="loading" /><span>กำลังหาคู่แข่ง</span>
                   <button className="outline" type="button" onClick={matchmaking.cancel}>ยกเลิก</button>
                 </div>
-              ) : <button className="title-option title-play" type="button" disabled={pending} onClick={matchmaking.start}>
+              ) : <button className="title-option title-play" type="button" disabled={menuBusy} onClick={matchmaking.start}>
                 <Shuffle aria-hidden="true" /> สุ่มเล่นออนไลน์
               </button>}
-              <button className="title-option" type="button" disabled={pending || matchmaking.searching} onClick={() => send({ op: "create" }, true)}>
+              <button className="title-option" type="button" disabled={menuBusy} onClick={() => send({ op: "create" }, true)}>
                 <Swords aria-hidden="true" /> สร้างห้องใหม่
               </button>
-              <button ref={joinButton} className="title-option" type="button" aria-expanded={joinOpen} aria-controls="title-join" disabled={pending || matchmaking.searching}
+              <button ref={joinButton} className="title-option" type="button" aria-expanded={joinOpen} aria-controls="title-join" disabled={menuBusy}
                 onClick={() => {
                   setShowJoin(!joinOpen);
                   setError("");
@@ -369,10 +421,20 @@ export default function MorrisClub() {
                 <input ref={joinInput} aria-label="รหัสห้อง 6 ตัว" autoComplete="off" autoCapitalize="characters" spellCheck={false}
                   placeholder="รหัสห้อง 6 ตัว" value={joinCode} required pattern="[A-Z0-9]{6}" maxLength={6}
                   onChange={(event) => setJoinCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />
-                <button className="outline" type="submit" disabled={pending || matchmaking.searching || !roomCode.test(joinCode)}>เข้าห้อง <ArrowRight aria-hidden="true" /></button>
+                <button className="outline" type="submit" disabled={menuBusy || !roomCode.test(joinCode)}>เข้าห้อง <ArrowRight aria-hidden="true" /></button>
               </form>
               <button className="title-option" type="button" onClick={() => setModal("leaderboard")}><Trophy aria-hidden="true" /> อันดับโลก</button>
               <button className="title-option" type="button" onClick={() => setModal("rules")}>วิธีเล่น</button>
+            </div>
+            <div className="club-feature-actions">
+              <button className="title-option" type="button" aria-haspopup="dialog" disabled={menuBusy} onClick={() => { setModal("friends"); void social.refresh(); }}>
+                <UsersRound aria-hidden="true" /> เพื่อน
+                {socialNotices > 0 && <small aria-label={`${socialNotices} รายการใหม่`}>{socialNotices}</small>}
+              </button>
+              <button className="title-option" type="button" aria-haspopup="dialog" disabled={menuBusy} onClick={openShop}>
+                <ShoppingBag aria-hidden="true" /> ร้านค้า
+                {shop.state && <small aria-label={`${shop.state.coins} เหรียญ`}>{shop.state.coins}</small>}
+              </button>
             </div>
             {(error || matchmaking.error) && <p className="title-error" role="alert">{error || matchmaking.error}</p>}
           </section>
@@ -386,6 +448,16 @@ export default function MorrisClub() {
       {modal === "leaderboard" && <Dialog title="อันดับโลก" close={() => setModal(null)}><Leaderboard /></Dialog>}
 
       {modal === "rules" && <GameDetails title="วิธีเล่น Morris" close={() => setModal(null)} />}
+
+      {(modal === "friends" || modal === "invite") && <ClubFriends key={modal} mode={modal}
+        state={social.state} error={social.error} pending={socialPending} inviteCode={modal === "invite" ? waitingHost : undefined}
+        canJoin={canJoinInvite} close={() => setModal(null)} retry={() => void social.refresh()}
+        search={async (id) => (await socialApi<{ player: SocialLookup | null }>(session.access_token, { op: "search", playerId: id })).player}
+        act={socialAction} />}
+
+      {modal === "shop" && <ClubShop state={shop.state} error={shop.error} close={() => setModal(null)}
+        retry={() => void shop.request({ op: "state" }).catch(() => {})}
+        buy={({ kind, id }) => shop.request({ op: "buy", kind, id })} />}
 
       {modal === "history" && <Dialog title="ประวัติการแข่งขัน" close={() => setModal(null)}>
         <div className="history-total"><Trophy /> <strong>{wins}</strong> ชนะทั้งหมด</div>

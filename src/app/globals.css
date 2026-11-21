@@ -181,6 +181,11 @@ dialog p { color: var(--soft); margin: 8px 0 12px; }
 .color-rose { --piece: #f5b2cd; --piece-light: #fbe6ee; --piece-edge: #a4577b; }
 .color-sky { --piece: #a8d4f8; --piece-light: #dfeffc; --piece-edge: #4c72a0; }
 .color-gold { --piece: #ffd098; --piece-light: #fff0d6; --piece-edge: #a76a34; }
+.color-sky { --premium-piece: radial-gradient(ellipse at 28% 25%, #f5ffef, #abe6e9 30%, #9daef1 65%, #4c72a0); }
+.color-gold { --premium-piece: radial-gradient(ellipse at 28% 25%, #ffffd9, #ffd582 37%, #ffaf79 65%, #a76a34); }
+.point.piece.color-sky span, .point.piece.color-gold span,
+.piece-tray.color-sky .tray-piece i, .piece-tray.color-gold .tray-piece i,
+.drag-ghost:is(.color-sky, .color-gold) { background: var(--premium-piece); }
 
 .table-stage {
   justify-self: center; width: min(1190px, 100%); display: grid;
@@ -554,13 +559,11 @@ dialog p { color: var(--soft); margin: 8px 0 12px; }
 .access-actions .title-option { padding-inline: clamp(12px, 2vw, 20px); }
 .access-actions .title-option:disabled { background: #322346df; opacity: 1; color: #e3d7ef; text-shadow: none; }
 .access-actions .title-play:disabled { border-color: #bba7cf; box-shadow: none; }
-.google-signin {
-  width: clamp(46px, 5vw, 54px); aspect-ratio: 1; border: 0; border-radius: 8px;
+.google-signin-mark {
+  flex: none; width: 1.1em; aspect-ratio: 1;
   background: url("/google-signin.svg") center / contain no-repeat;
-  box-shadow: 0 3px 10px #48365d44; transition: box-shadow .16s ease;
 }
-.google-signin:hover:not(:disabled) { box-shadow: 0 4px 14px #48365d73; }
-.google-signin:disabled { opacity: .65; }
+.game-details-button { min-height: 44px; }
 .access-note {
   padding: 3px 9px; border-radius: 8px; background: #33234be8;
   color: #fff3df; font-size: 15px; font-weight: 750;

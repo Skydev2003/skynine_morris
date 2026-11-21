@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { createGame, isAction, other, play } from "@/lib/morris";
 import { roomDb } from "@/lib/room-db";
 import { emojis, isCharacter, isPieceColor, playerName, roomCode, turnSeconds, type Room } from "@/lib/rooms";
+import { STARTER_CHARACTERS, STARTER_COLORS } from "@/lib/shop";
+import { getShopState } from "@/lib/shop-db";
 
 const auth = { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false };
 const reply = (error: string, status: number) => Response.json({ error }, { status });
@@ -82,6 +84,16 @@ export async function POST(request: Request) {
       const ready = input.op === "ready" ? input.ready : false;
       if (!isCharacter(character) || !isPieceColor(color) || typeof ready !== "boolean") return reply("การตั้งค่าผู้เล่นไม่ถูกต้อง", 400);
       if (color === (seat === "host" ? room.guest_color : room.host_color)) return reply("สีนี้ถูกจองอยู่ เลือกสีอื่นได้เลย", 409);
+      if (input.op === "loadout") {
+        const newCharacter = character !== room[`${seat}_character`] && !STARTER_CHARACTERS.includes(character);
+        const newColor = color !== room[`${seat}_color`] && !STARTER_COLORS.includes(color);
+        if (newCharacter || newColor) {
+          const owns = await getShopState(db, userId);
+          if ((newCharacter && !owns.ownedCharacters.includes(character)) || (newColor && !owns.ownedColors.includes(color))) {
+            return reply("ปลดล็อกไอเทมในร้านค้าก่อนเลือกใช้งาน", 403);
+          }
+        }
+      }
       const { rows: [updated] } = await db.query<Room>(
         `update public.morris_rooms set ${seat}_character = $1, ${seat}_color = $2, ${seat}_ready = $3
          where code = $4 and revision = $5 and started_at is null returning *`,
