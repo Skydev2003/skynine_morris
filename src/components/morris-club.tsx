@@ -6,6 +6,7 @@ import { MatchSearch } from "./arena-wait";
 import { ClubFriends, InviteActions, type SocialCommand } from "./club-friends";
 import { CoinIcon } from "./coin";
 import { ClubShop } from "./club-shop";
+import { QuickCharacterPicker } from "./quick-character-picker";
 import { ClubPreview } from "./club-preview";
 import { Dialog } from "./dialog";
 import { GameDetails } from "./game-details";
@@ -18,7 +19,7 @@ import { GameLottie } from "./game-lottie";
 import { ArrowLeft, ArrowRight, BookOpen, DoorOpen, LogOut, Music2, ShoppingBag, Shuffle, Swords, Trophy, UsersRound, Volume2, VolumeX } from "lucide-react";
 import { captures, placing, play, targets, type Action } from "@/lib/morris";
 import { browserDb, googleInviteKey, onlineConfigured } from "@/lib/browser-db";
-import { playerName, roomCode, turnSeconds, type Match, type Room } from "@/lib/rooms";
+import { playerName, roomCode, turnSeconds, type Match, type QuickLoadout, type Room } from "@/lib/rooms";
 import { useArenaAudio } from "@/lib/arena-audio";
 import { localTimeout, localTurn, opponentMove, resetOpponentMatch } from "@/lib/opponent";
 import { useMatchmaking } from "@/lib/use-matchmaking";
@@ -27,7 +28,7 @@ import { useSocial } from "@/lib/use-social";
 import { useShop } from "@/lib/use-shop";
 import { useMorris } from "@/lib/store";
 
-type Modal = "rules" | "history" | "leaderboard" | "friends" | "invite" | "shop";
+type Modal = "rules" | "history" | "leaderboard" | "friends" | "invite" | "shop" | "quick-character";
 
 export default function MorrisClub() {
   const state = useMorris();
@@ -43,6 +44,7 @@ export default function MorrisClub() {
   const code = room?.code;
   const side = room && (room.host_id === userId ? "mint" : "rose");
   const [modal, setModal] = useState<Modal | null>(null);
+  const [quickChoice, setQuickChoice] = useState<{ userId: string; loadout: QuickLoadout }>();
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -414,10 +416,7 @@ export default function MorrisClub() {
             <div className="club-home-menu">
               <h1 id="entry-title" className="club-home-title">Morris <span>Club</span></h1>
               <p className="club-greeting">สวัสดี <strong>{name}</strong></p>
-              <button className="club-quick-play" type="button" disabled={menuBusy} onClick={() => {
-                sound.cue("search");
-                void matchmaking.start();
-              }}>
+              <button className="club-quick-play" type="button" aria-haspopup="dialog" disabled={menuBusy} onClick={() => setModal("quick-character")}>
                 <span className="club-quick-icon"><Shuffle aria-hidden="true" /></span>
                 สุ่มเล่นออนไลน์ <ArrowRight className="club-quick-arrow" aria-hidden="true" />
               </button>
@@ -480,6 +479,15 @@ export default function MorrisClub() {
         canJoin={canJoinInvite} close={() => setModal(null)} retry={() => void social.refresh()}
         search={async (id) => (await socialApi<{ player: SocialLookup | null }>(session.access_token, { op: "search", playerId: id })).player}
         act={socialAction} />}
+
+      {modal === "quick-character" && titleScreen && <QuickCharacterPicker inventory={shop.state}
+        previous={quickChoice?.userId === session.user.id ? quickChoice.loadout : undefined}
+        close={() => setModal(null)} start={(loadout) => {
+          setQuickChoice({ userId: session.user.id, loadout });
+          setModal(null);
+          sound.cue("search");
+          void matchmaking.start(loadout);
+        }} />}
 
       {modal === "shop" && <ClubShop state={shop.state} error={shop.error} close={() => setModal(null)}
         retry={() => void shop.request({ op: "state" }).catch(() => {})}

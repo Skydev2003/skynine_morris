@@ -48,6 +48,11 @@ export function playerName(value: unknown) {
 export const colors = { mint: "มิ้นต์", rose: "ชมพู", sky: "ฟ้า", gold: "พีช", aurora: "ออโรร่ามิ้นต์", flare: "สุริยะเพลิง" } as const;
 export type Character = keyof typeof characters;
 export type PieceColor = keyof typeof colors;
+export type QuickLoadout = { character: Character; color: PieceColor };
+
+export function alternatePieceColor(color: PieceColor): PieceColor {
+  return color === "rose" || color === "gold" || color === "flare" ? "mint" : "rose";
+}
 
 export function isCharacter(value: unknown): value is Character {
   return typeof value === "string" && Object.hasOwn(characters, value);

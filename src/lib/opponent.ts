@@ -1,5 +1,5 @@
 import { captures, count, createGame, other, placing, play, targets, type Action, type Game } from "./morris";
-import { characters, turnSeconds, type Character, type Room } from "./rooms";
+import { alternatePieceColor, characters, turnSeconds, type Character, type QuickLoadout, type Room } from "./rooms";
 
 function options(game: Game): Action[] {
   if (game.winner) return [];
@@ -27,13 +27,13 @@ export function opponentMove(game: Game): Action | undefined {
 
 const deadline = () => new Date(Date.now() + turnSeconds * 1000).toISOString();
 
-export function createOpponentMatch(userId: string, name: string): Room {
-  const roster = (Object.keys(characters) as Character[]).filter((character) => character !== "kai");
+export function createOpponentMatch(userId: string, name: string, { character, color }: QuickLoadout): Room {
+  const roster = (Object.keys(characters) as Character[]).filter((rival) => rival !== character);
   const rival = roster[Math.floor(Math.random() * roster.length)];
   return {
     code: "local-" + crypto.randomUUID(), local_match: true, host_id: userId, host_name: name,
-    guest_id: "arena-opponent", guest_name: characters[rival], host_character: "kai", guest_character: rival,
-    host_color: "mint", guest_color: "rose", host_ready: true, guest_ready: true, started_at: new Date().toISOString(),
+    guest_id: "arena-opponent", guest_name: characters[rival], host_character: character, guest_character: rival,
+    host_color: color, guest_color: alternatePieceColor(color), host_ready: true, guest_ready: true, started_at: new Date().toISOString(),
     game: createGame(), turn_deadline: deadline(), finish_reason: null, revision: 0, game_revision: 0,
     reaction: null, reacted_at: null, winner_id: null, finished_at: null, host_rematch: false, guest_rematch: false, rematch_closed: false,
   };

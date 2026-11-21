@@ -2,15 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { QueueAction, QueueReply } from "./match-queue";
 import { createOpponentMatch } from "./opponent";
-import type { Room } from "./rooms";
+import type { QuickLoadout, Room } from "./rooms";
 
 type Search = { ticket: string; token: string; cancelled: boolean; controller: AbortController };
 
-async function ask(search: Search, op: QueueAction): Promise<QueueReply> {
+async function ask(search: Search, op: QueueAction, loadout?: QuickLoadout): Promise<QueueReply> {
   const response = await fetch("/api/rooms", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${search.token}` },
-    body: JSON.stringify({ op, ticket: search.ticket }),
+    body: JSON.stringify({ op, ticket: search.ticket, ...loadout }),
     signal: AbortSignal.any([search.controller.signal, AbortSignal.timeout(8000)]),
   });
   const payload = await response.json();
@@ -25,14 +25,14 @@ export function useMatchmaking(session: Session | null, name: string, openRoom: 
 
   useEffect(() => () => active.current?.controller.abort(), []);
 
-  async function start() {
+  async function start(loadout: QuickLoadout) {
     if (!session || !name || active.current) return;
     const search: Search = { ticket: crypto.randomUUID(), token: session.access_token, cancelled: false, controller: new AbortController() };
     active.current = search;
     setSearching(true);
     setError("");
     try {
-      let result = await ask(search, "queue");
+      let result = await ask(search, "queue", loadout);
       while (result.status === "waiting") {
         if (search.cancelled) { result = await ask(search, "queue_cancel"); break; }
         const retryIn = result.retryIn;
@@ -41,7 +41,7 @@ export function useMatchmaking(session: Session | null, name: string, openRoom: 
       }
       if (search.controller.signal.aborted) return;
       if (result.status === "paired") openRoom(result.room);
-      else if (result.status === "fallback" && !search.cancelled) openRoom(createOpponentMatch(session.user.id, name));
+      else if (result.status === "fallback" && !search.cancelled) openRoom(createOpponentMatch(session.user.id, name, loadout));
     } catch {
       if (!search.controller.signal.aborted && !search.cancelled) setError("ค้นหาคู่แข่งไม่สำเร็จ กรุณาลองอีกครั้ง");
     } finally {

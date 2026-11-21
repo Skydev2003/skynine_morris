@@ -2,7 +2,7 @@ import { makeRoomCode, matchQueue, queueActions, type QueueAction } from "@/lib/
 import { createClient } from "@supabase/supabase-js";
 import { createGame, isAction, other, play } from "@/lib/morris";
 import { roomDb } from "@/lib/room-db";
-import { emojis, isCharacter, isPieceColor, playerName, roomCode, turnSeconds, type Room } from "@/lib/rooms";
+import { emojis, isCharacter, isPieceColor, playerName, roomCode, turnSeconds, type QuickLoadout, type Room } from "@/lib/rooms";
 import { googleAvatarUrl } from "@/lib/avatar";
 import { isProfileFrame, STARTER_CHARACTERS, STARTER_COLORS, type MatchProfile } from "@/lib/shop";
 import { getShopState } from "@/lib/shop-db";
@@ -33,7 +33,26 @@ export async function POST(request: Request) {
     if (queueActions.includes(input.op)) {
       if (!name) return reply("ตั้งชื่อผู้เล่นก่อนเริ่มค้นหา", 422);
       if (typeof input.ticket !== "string" || !ticketFormat.test(input.ticket)) return reply("ค้นหาคู่ไม่สำเร็จ กรุณาลองใหม่", 400);
-      return Response.json(await matchQueue(db, input.op as QueueAction, userId, input.ticket, name));
+      const loadout: Partial<QuickLoadout> = {};
+      if (input.op === "queue") {
+        const character: unknown = input.character;
+        const color: unknown = input.color;
+        if (character !== undefined) {
+          if (!isCharacter(character)) return reply("ตัวละครที่เลือกไม่ถูกต้อง", 400);
+          loadout.character = character;
+        }
+        if (color !== undefined) {
+          if (!isPieceColor(color)) return reply("หมากที่เลือกไม่ถูกต้อง", 400);
+          loadout.color = color;
+        }
+        if ((loadout.character && !STARTER_CHARACTERS.includes(loadout.character)) ||
+          (loadout.color && !STARTER_COLORS.includes(loadout.color))) {
+          const owned = await getShopState(db, userId);
+          if (loadout.character && !owned.ownedCharacters.includes(loadout.character)) return reply("ปลดล็อกตัวละครนี้ก่อนเลือกใช้งาน", 403);
+          if (loadout.color && !owned.ownedColors.includes(loadout.color)) return reply("ปลดล็อกหมากนี้ก่อนเลือกใช้งาน", 403);
+        }
+      }
+      return Response.json(await matchQueue(db, input.op as QueueAction, userId, input.ticket, name, loadout));
     }
     if (input.op === "create") {
       if (!name) return reply("ตั้งชื่อผู้เล่นก่อนสร้างห้อง", 422);
