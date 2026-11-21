@@ -1,5 +1,6 @@
+import { CoinIcon } from "./coin";
 import { useEffect, useRef, type CSSProperties } from "react";
-import { Check, Coins, DoorOpen, Hourglass, RotateCcw, Trophy } from "lucide-react";
+import { Check, DoorOpen, Hourglass, RotateCcw, Trophy } from "lucide-react";
 import { capturedCount, lastCapture, other, type Side } from "@/lib/morris";
 import type { Room } from "@/lib/rooms";
 import { WIN_COINS } from "@/lib/shop";
@@ -45,7 +46,7 @@ export function MatchResult({ room, side, pending, error, rematch, end }: {
       <div className="result-medal" aria-hidden="true"><Trophy /></div>
       <h2 id="result-title">{title}</h2>
       {room.finish_reason === "timeout" && <p className="result-reason">จบเกมเพราะหมดเวลา</p>}
-      {won && !room.local_match && <p className="shop-balance match-coins"><Coins aria-hidden="true" /> <strong>+{WIN_COINS}</strong> เหรียญ</p>}
+      {won && !room.local_match && <p className="shop-balance match-coins"><CoinIcon /> <strong>+{WIN_COINS}</strong> เหรียญ</p>}
       <div className="result-score">
         <div><strong>{capturedCount(room.game, side)}</strong><span>คุณกินได้</span></div>
         <div><strong>{capturedCount(room.game, other(side))}</strong><span>คู่แข่งกินได้</span></div>

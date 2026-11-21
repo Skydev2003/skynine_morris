@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Coins, Sparkles } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import { characters, colors } from "@/lib/rooms";
 import { frames, SHOP_ITEMS, type ProfileFrame, type ShopState, WIN_COINS } from "@/lib/shop";
+import { CoinBalance, CoinIcon } from "./coin";
 import { Dialog } from "./dialog";
 import { ProfileAvatar } from "./player-profile";
 
@@ -39,7 +40,7 @@ export function ClubShop({ state, error, close, buy, equip, retry }: {
 
   return (
     <Dialog title="ร้านค้า Morris" className="feature-dialog shop-dialog" close={close}>
-      <div className="shop-balance"><Coins aria-hidden="true" /><strong>{state?.coins.toLocaleString("th-TH") ?? "–"}</strong> เหรียญ</div>
+      <CoinBalance coins={state?.coins} />
       <p className="feature-intro">ชนะผู้เล่นออนไลน์ รับ {WIN_COINS} เหรียญต่อตา</p>
       {error && <p className="feature-error" role="alert">{error} <button type="button" className="outline" onClick={retry}>ลองใหม่</button></p>}
       {!state && !error && <p className="feature-empty" role="status">กำลังเปิดร้านค้า…</p>}
@@ -72,7 +73,7 @@ export function ClubShop({ state, error, close, buy, equip, retry }: {
               ) : owned ? <span className="shop-owned"><Check aria-hidden="true" /> มีแล้ว</span>
                 : <button className="primary shop-action" type="button" disabled={!affordable || pending}
                     aria-label={`ซื้อ${label} ${item.price} เหรียญ`} onClick={() => void perform(() => buy(item), item.kind === "frame" ? `ปลดล็อกกรอบ${label}แล้ว` : `ปลดล็อก${label}แล้ว เลือกใช้ได้ในล็อบบี้`)}>
-                    <Coins aria-hidden="true" /> {item.price} เหรียญ
+                    <CoinIcon /> {item.price} เหรียญ
                   </button>}
             </li>
           );

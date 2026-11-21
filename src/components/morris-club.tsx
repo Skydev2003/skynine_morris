@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AuthScreen } from "./auth-screen";
 import { MatchSearch } from "./arena-wait";
 import { ClubFriends, InviteActions, type SocialCommand } from "./club-friends";
+import { CoinIcon } from "./coin";
 import { ClubShop } from "./club-shop";
 import { ClubPreview } from "./club-preview";
 import { Dialog } from "./dialog";
@@ -57,6 +58,7 @@ export default function MorrisClub() {
   });
   const social = useSocial(userId);
   const shop = useShop(userId, room?.finished_at);
+  const coinCount = shop.state?.coins.toLocaleString("th-TH");
 
   function openMatch(next: Room) {
     const current = useMorris.getState();
@@ -389,7 +391,7 @@ export default function MorrisClub() {
           }} />
         </aside>}
         {!room && (!name || editingName) ? (
-          <PlayerProfile user={session.user} wins={wins} name={nameInput} pending={pending} error={error}
+          <PlayerProfile user={session.user} wins={wins} coins={shop.state?.coins} name={nameInput} pending={pending} error={error}
             playerId={social.state?.playerId} frame={shop.state?.equippedFrame} setName={setNameInput} saveName={saveName} />
         ) : shownRoom && room && side ? room.started_at ? (
           <MatchStage key={room.started_at} room={shownRoom} confirmed={room} cue={sound.cue} side={side} accessToken={session.access_token}
@@ -453,9 +455,10 @@ export default function MorrisClub() {
                 <UsersRound aria-hidden="true" /> เพื่อน
                 {socialNotices > 0 && <small aria-label={`${socialNotices} รายการใหม่`}>{socialNotices}</small>}
               </button>
-              <button type="button" aria-haspopup="dialog" disabled={menuBusy} onClick={openShop}>
+              <button type="button" aria-haspopup="dialog" aria-label={coinCount === undefined ? undefined : `ร้านค้า ${coinCount} เหรียญ`}
+                disabled={menuBusy} onClick={openShop}>
                 <ShoppingBag aria-hidden="true" /> ร้านค้า
-                {shop.state && <small aria-label={`${shop.state.coins} เหรียญ`}>{shop.state.coins}</small>}
+                {coinCount !== undefined && <small className="club-shop-count"><CoinIcon />{coinCount}</small>}
               </button>
               <button type="button" aria-haspopup="dialog" onClick={() => setModal("leaderboard")}><Trophy aria-hidden="true" /> อันดับโลก</button>
               <button type="button" aria-haspopup="dialog" onClick={() => setModal("rules")}><BookOpen aria-hidden="true" /> วิธีเล่น</button>

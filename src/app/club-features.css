@@ -136,6 +136,30 @@
   line-height: 1.2;
 }
 
+.coin-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--coin-size, 18px);
+  aspect-ratio: 1;
+  border: 1px solid #b7741d;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fff7ad, #ffde59 40%, #f5ae26 86%);
+  color: #93570e;
+  box-shadow: inset 0 0 0 1px #fff2a5, 0 1px 1px #8d561340;
+}
+
+.coin-icon svg {
+  width: 64%;
+  height: 64%;
+  fill: #fff19a;
+  stroke-width: 2.3;
+}
+
+.shop-balance { --coin-size: 23px; }
+.profile-stats { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 7px; }
+.profile-stats .shop-balance { min-height: 43px; margin: 0; }
+
 .shop-tabs {
   display: flex;
   width: fit-content;
@@ -217,15 +241,6 @@
 
 .shop-card .shop-art.picker-portrait:not(.portrait-kai, .portrait-momo) {
   background-position: center 30%;
-}
-
-.shop-art.portrait-hikaru { --shop-portrait: url("/roster/shop-hikaru.webp"); }
-.shop-art.portrait-akira { --shop-portrait: url("/roster/shop-akira.webp"); }
-.shop-art.portrait-sai { --shop-portrait: url("/roster/shop-sai.webp"); }
-
-.shop-card .shop-art:is(.portrait-hikaru, .portrait-akira, .portrait-sai) {
-  background-image: var(--shop-portrait);
-  background-size: cover;
 }
 
 .shop-card .shop-art:is(.portrait-kai, .portrait-momo) {

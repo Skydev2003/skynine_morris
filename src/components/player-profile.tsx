@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import type { User } from "@supabase/supabase-js";
 import { Check, Copy, Trophy, UserRound } from "lucide-react";
 
+import { CoinBalance } from "./coin";
 import { googleAvatarUrl } from "@/lib/avatar";
 import type { ProfileFrame } from "@/lib/shop";
 
@@ -31,6 +32,7 @@ export function ProfileAvatar({ photo, frame }: { photo?: string; frame?: Profil
 type ProfileProps = {
   user: User;
   wins: number;
+  coins?: number;
   name: string;
   pending: boolean;
   error: string;
@@ -40,7 +42,7 @@ type ProfileProps = {
   saveName: (event: FormEvent<HTMLFormElement>) => void;
 };
 
-export function PlayerProfile({ user, wins, name, pending, error, playerId, frame, setName, saveName }: ProfileProps) {
+export function PlayerProfile({ user, wins, coins, name, pending, error, playerId, frame, setName, saveName }: ProfileProps) {
   const [copyStatus, setCopyStatus] = useState("");
 
   async function copyId() {
@@ -57,7 +59,10 @@ export function PlayerProfile({ user, wins, name, pending, error, playerId, fram
     <section className="game-ticket player-profile" aria-labelledby="profile-title">
       <h1 id="profile-title">โปรไฟล์ผู้เล่น</h1>
       <PlayerAvatar user={user} frame={frame} />
-      <div className="wins"><Trophy aria-hidden="true" /><strong>{wins}</strong> ชนะ</div>
+      <div className="profile-stats">
+        <div className="wins"><Trophy aria-hidden="true" /><strong>{wins}</strong> ชนะ</div>
+        <CoinBalance coins={coins} />
+      </div>
       <div className="profile-player-id">
         <span>ไอดีเกม</span><strong>{playerId ?? "–"}</strong>
         <button className="outline" type="button" aria-label="คัดลอกไอดีเกม" disabled={!playerId} onClick={() => void copyId()}><Copy aria-hidden="true" /></button>

@@ -307,6 +307,9 @@ dialog p { color: var(--soft); margin: 8px 0 12px; }
 .portrait-rio { --roster-art: url("/roster/rio.jpg"); }
 .portrait-luna { --roster-art: url("/roster/luna.jpg"); }
 .portrait-pippin { --roster-art: url("/roster/pippin.jpg"); }
+.portrait-hikaru { --roster-art: url("/roster/shop-hikaru.webp"); }
+.portrait-akira { --roster-art: url("/roster/shop-akira.webp"); }
+.portrait-sai { --roster-art: url("/roster/shop-sai.webp"); }
 :is(.loadout-portrait, .duelist-portrait, .picker-portrait):not(.portrait-kai, .portrait-momo) {
   background-image: var(--roster-art);
   background-size: cover;
@@ -804,12 +807,3 @@ dialog p { color: var(--soft); margin: 8px 0 12px; }
   box-shadow: 0 3px 0 var(--piece-edge), 0 0 12px var(--piece-glow);
 }
 .color-picker { flex-wrap: wrap; }
-
-.portrait-hikaru { --licensed-x: 53%; --licensed-y: 60%; }
-.portrait-akira { --licensed-x: 10%; --licensed-y: 24%; }
-.portrait-sai { --licensed-x: 86%; --licensed-y: 16%; }
-:is(.loadout-portrait, .duelist-portrait, .picker-portrait):is(.portrait-hikaru, .portrait-akira, .portrait-sai) {
-  --roster-art: url("/roster/hikaru-no-go.png");
-  background-size: 300% auto;
-  background-position: var(--licensed-x) var(--licensed-y);
-}
