@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import Link from "next/link";
 import { AuthScreen } from "./auth-screen";
-import { Logo } from "./logo";
-import { ArrowLeft, ArrowRight, BookOpen, Copy, DoorOpen, History, LogIn, LogOut, Plus, Smile, Trophy, X } from "lucide-react";
-import { captures, count, placing, targets, type Action } from "@/lib/morris";
+import { MatchStage } from "./match-stage";
+import { RoomLobby } from "./room-lobby";
+import { ArrowLeft, ArrowRight, BookOpen, LogOut, Swords, Trophy, X } from "lucide-react";
+import { captures, placing, targets, type Action } from "@/lib/morris";
 import { browserDb, onlineConfigured } from "@/lib/browser-db";
-import { emojis, roomCode, type Match, type Room } from "@/lib/rooms";
+import { roomCode, type Match, type Room } from "@/lib/rooms";
 import { useMorris } from "@/lib/store";
-import { Board, Player, sideName } from "./morris-board";
 
 type Modal = "rules" | "history";
 
@@ -188,99 +187,42 @@ export default function MorrisClub() {
     leaveRoom();
   }
 
-  const game = room?.game;
-  const waiting = Boolean(room && !room.guest_id);
-  const active = Boolean(game && !pending && !game.winner && room?.guest_id && side === game.turn);
-  const phase = !game || placing(game) ? "วางหมาก" : count(game, game.turn) === 3 ? "บิน" : "เลื่อนหมาก";
-  const boardTitle = !game ? "" : waiting ? "รอเพื่อนเข้าห้อง" : game.winner ? `ทีม${sideName[game.winner]}ชนะ!`
-    : game.turn === side ? "ตาของคุณ" : "ตาของคู่แข่ง";
-  const boardHint = !game ? "" : waiting ? "ส่งรหัสห้องให้เพื่อนเพื่อเริ่มเกม"
-    : game.winner ? "จบการแข่งขัน" : game.capture ? "สร้างมิลล์แล้ว เลือกหมากคู่แข่ง 1 ตัว"
-    : phase === "วางหมาก" ? "เลือกจุดว่างเพื่อวางหมาก" : phase === "บิน" ? "เลือกหมากแล้วบินไปยังจุดว่างใดก็ได้" : "เลือกหมากแล้วเลื่อนไปยังจุดว่างที่ติดกัน";
+  const active = Boolean(room?.started_at && !pending && !room.game.winner && side === room.game.turn);
 
   if (!session) return <AuthScreen configured={onlineConfigured} />;
 
   return (
     <>
-      <header className="site-header">
-        <div className="shell header-inner">
-          <Link className="brand" href="/" aria-label="Morris Club หน้าหลัก"><Logo /><span>MORRIS<span className="brand-accent"> CLUB</span></span></Link>
-          <div className="account">
-            <button className="wins" onClick={() => setModal("history")} aria-label={`ประวัติการแข่งขัน ชนะ ${wins} ครั้ง`}><Trophy /><strong>{wins}</strong><span>ชนะ</span></button>
-            <button className="outline login" onClick={signOut} disabled={pending} aria-label="ออกจากระบบ"><LogOut /><span>ออกจากระบบ</span></button>
-          </div>
+      <main className={`game-world ${room ? "stadium-world" : "menu-world"}`} key={room ? room.code : "menu"}>
+        <div className="world-corner corner-left">
+          {room && <button className="hud-button" onClick={leaveRoom} disabled={pending} aria-label="กลับหน้าเลือกห้อง" title="กลับหน้าเลือกห้อง"><ArrowLeft /><span className="hud-label">กลับ</span></button>}
         </div>
-      </header>
-
-      <main className="shell screen" key={room ? room.code : "lobby"}>
-        {!room || !game ? (
-          <div className="lobby">
-            <div className="lobby-hero">
-              <div className="lobby-copy">
-                <span className="eyebrow"><i /> MORRIS CLUB</span>
-                <h1>เจอกัน<br />ที่สนาม!</h1>
-                <p>ชวนเพื่อนมาดวล Nine Men’s Morris</p>
-              </div>
-              <div className="lobby-art" aria-hidden="true" />
-            </div>
-            <div className="lobby-options">
-              <section className="panel room-panel">
-                <span className="panel-icon mint-icon"><DoorOpen /></span>
-                <h2>สร้างห้อง</h2><p>เป็นโฮสต์แล้วส่งรหัสห้องให้เพื่อน</p>
-                <button className="primary wide create" disabled={pending} onClick={() => send({ op: "create" }, true)}><Plus /> สร้างห้องใหม่ <ArrowRight /></button>
-              </section>
-              <section className="panel room-panel">
-                <span className="panel-icon rose-icon"><LogIn /></span>
-                <h2>เข้าร่วม</h2><p>กรอกรหัส 6 ตัวที่ได้รับจากโฮสต์</p>
-                <form className="join" onSubmit={(event) => { event.preventDefault(); void send({ op: "join", code: joinCode }, true); }}>
-                  <input aria-label="รหัสห้อง 6 ตัว" autoComplete="off" autoCapitalize="characters" spellCheck={false} placeholder="รหัส 6 ตัว" value={joinCode}
-                    required pattern="[A-Z0-9]{6}" maxLength={6} onChange={(event) => setJoinCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />
-                  <button className="outline" type="submit" disabled={pending || !roomCode.test(joinCode)}>เข้าห้อง <ArrowRight /></button>
-                </form>
-              </section>
-            </div>
-            {error && <p className="feedback" role="alert">{error}</p>}
-            <button className="text-button lobby-rules" onClick={() => setModal("rules")}><BookOpen /> วิธีเล่น</button>
-          </div>
+        <div className="world-corner corner-right">
+          <button className="wins" onClick={() => setModal("history")} aria-label={`ประวัติการแข่งขัน ชนะ ${wins} ครั้ง`}><Trophy /><strong>{wins}</strong><span>ชนะ</span></button>
+          <button className="hud-button" onClick={() => setModal("rules")} aria-label="วิธีเล่น" title="วิธีเล่น"><BookOpen /></button>
+          {!room && <button className="hud-button" onClick={signOut} disabled={pending} aria-label="ออกจากระบบ" title="ออกจากระบบ"><LogOut /></button>}
+        </div>
+        {room && side ? room.started_at ? (
+          <MatchStage room={room} side={side} selected={selected} pending={pending} reaction={reaction} error={error} point={point}
+            react={(emoji) => void send({ op: "react", code, emoji })} />
         ) : (
           <>
-            <div className="match-top"><button className="text-button" onClick={leaveRoom} disabled={pending}><ArrowLeft /> กลับหน้าเลือกห้อง</button><button className="text-button" onClick={() => setModal("rules")}><BookOpen /> วิธีเล่น</button></div>
-            <div className="arena-grid">
-              <section className="arena" aria-label="สนามเล่น">
-                <div className="arena-head">
-                  <div className="arena-status" aria-live="polite"><span className={`status-gem ${game.turn}`} /><div><h2>{boardTitle}</h2><p>{boardHint}</p></div></div>
-                  <span className="phase">{waiting ? "รอผู้เล่น" : game.winner ? "จบเกม" : phase}</span>
-                </div>
-                <div className="board-wrap">
-                  <Board game={game} active={active} selected={selected} onPoint={point} />
-                  {reaction && <div className={`reaction-pop ${reaction.sender === userId ? "mine" : ""}`} role="status">{reaction.emoji}<small>{reaction.sender === userId ? "คุณ" : "คู่แข่ง"}</small></div>}
-                </div>
-                <div className="players">
-                  <Player side="mint" game={game} current={!waiting && !game.winner && game.turn === "mint"} you={side === "mint"} />
-                  <span className="versus">VS</span>
-                  <Player side="rose" game={game} current={!waiting && !game.winner && game.turn === "rose"} you={side === "rose"} waiting={waiting} />
-                </div>
-              </section>
-
-              <aside className="sidebar" aria-label="ห้องและปฏิกิริยา">
-                <section className="panel room-panel">
-                  <span className="panel-icon mint-icon"><DoorOpen /></span>
-                  <h2>{side === "mint" ? "คุณเป็นโฮสต์" : "คุณเป็นผู้เล่น"}</h2>
-                  <p>{waiting ? "ส่งรหัสห้องนี้ให้เพื่อน" : "รหัสห้องของคุณ"}</p>
-                  <div className="room-code"><strong>{code}</strong><button className="icon-button" onClick={copy} aria-label="คัดลอกรหัสห้อง"><Copy /></button></div>
-                  <p className="room-note" role="status">{copied ? "คัดลอกรหัสแล้ว" : waiting ? "รอผู้เล่นคนที่ 2" : "ผู้เล่นครบ 2 คน"}</p>
-                  {error && <p className="feedback" role="alert">{error}</p>}
-                </section>
-                <section className="panel emoji-panel">
-                  <div className="emoji-heading"><span className="panel-icon rose-icon"><Smile /></span><div><h2>ส่งอิโมจิ</h2><p>{waiting ? "ส่งหาเพื่อนได้เมื่อเข้าห้องครบ" : "แตะอิโมจิเพื่อส่งให้คู่แข่ง"}</p></div></div>
-                  <div className="emojis">{emojis.map((emoji, i) =>
-                    <button key={emoji} title={["ทักทาย", "ไฟลุก", "ประหลาดใจ", "ปรบมือ", "เท่มาก", "เกมดี"][i]} disabled={waiting || pending}
-                      onClick={() => send({ op: "react", code, emoji })}>{emoji}</button>)}</div>
-                </section>
-                <button className="history-link" onClick={() => setModal("history")}><History /> ประวัติการแข่งขัน <ArrowRight /></button>
-              </aside>
-            </div>
+            <RoomLobby room={room} seat={side === "mint" ? "host" : "guest"} pending={pending} copied={copied} copy={copy}
+              send={(command) => void send({ ...command, code, revision: room.revision })} />
+            {error && <p className="stage-error" role="alert">{error}</p>}
           </>
+        ) : (
+          <section className="entry-menu" aria-labelledby="entry-title">
+            <h1 id="entry-title">Morris<br /> Club</h1>
+            <p>ศึกวางหมากสองผู้เล่น</p>
+            <button className="primary wide create" disabled={pending} onClick={() => send({ op: "create" }, true)}><Swords /> สร้างห้องใหม่ <ArrowRight /></button>
+            <form className="join" onSubmit={(event) => { event.preventDefault(); void send({ op: "join", code: joinCode }, true); }}>
+              <input aria-label="รหัสห้อง 6 ตัว" autoComplete="off" autoCapitalize="characters" spellCheck={false} placeholder="รหัสห้อง 6 ตัว" value={joinCode}
+                required pattern="[A-Z0-9]{6}" maxLength={6} onChange={(event) => setJoinCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />
+              <button className="outline" type="submit" disabled={pending || !roomCode.test(joinCode)}>เข้าห้อง <ArrowRight /></button>
+            </form>
+            {error && <p className="feedback" role="alert">{error}</p>}
+          </section>
         )}
       </main>
 

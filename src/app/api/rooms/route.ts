@@ -2,7 +2,7 @@ import { randomInt } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { createGame, isAction, play } from "@/lib/morris";
 import { roomDb } from "@/lib/room-db";
-import { emojis, roomCode, type Room } from "@/lib/rooms";
+import { emojis, isCharacter, isPieceColor, roomCode, type Room } from "@/lib/rooms";
 
 const auth = { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false };
 const reply = (error: string, status: number) => Response.json({ error }, { status });
@@ -53,7 +53,35 @@ export async function POST(request: Request) {
     }
 
     if (!side) return reply("คุณยังไม่ได้เข้าห้องนี้", 403);
+    if (input.op === "loadout" || input.op === "ready" || input.op === "start") {
+      if (room.started_at || input.revision !== room.revision) return conflict();
+
+      if (input.op === "start") {
+        if (side !== "mint") return reply("โฮสต์เป็นคนเริ่มเกม", 403);
+        if (!room.guest_id || !room.host_ready || !room.guest_ready) return reply("รอให้ผู้เล่นทั้งสองกดพร้อม", 409);
+        const { rows: [started] } = await db.query<Room>(
+          "update public.morris_rooms set started_at = clock_timestamp() where code = $1 and revision = $2 and started_at is null returning *",
+          [room.code, room.revision],
+        );
+        return started ? Response.json(started) : conflict();
+      }
+
+      const seat = side === "mint" ? "host" : "guest";
+      const character = input.op === "loadout" ? input.character : room[`${seat}_character`];
+      const color = input.op === "loadout" ? input.color : room[`${seat}_color`];
+      const ready = input.op === "ready" ? input.ready : false;
+      if (!isCharacter(character) || !isPieceColor(color) || typeof ready !== "boolean") return reply("การตั้งค่าผู้เล่นไม่ถูกต้อง", 400);
+      if (color === (seat === "host" ? room.guest_color : room.host_color)) return reply("สีนี้ถูกจองอยู่ เลือกสีอื่นได้เลย", 409);
+      const { rows: [updated] } = await db.query<Room>(
+        `update public.morris_rooms set ${seat}_character = $1, ${seat}_color = $2, ${seat}_ready = $3
+         where code = $4 and revision = $5 and started_at is null returning *`,
+        [character, color, ready, room.code, room.revision],
+      );
+      return updated ? Response.json(updated) : conflict();
+    }
+
     if (!room.guest_id) return reply("รอเพื่อนเข้าห้องก่อน", 409);
+    if (!room.started_at) return reply("การแข่งขันยังไม่เริ่ม", 409);
 
     if (input.op === "react") {
       if (!emojis.includes(input.emoji)) return reply("เลือกอิโมจิจากรายการ", 400);
