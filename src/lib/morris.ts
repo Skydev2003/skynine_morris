@@ -29,6 +29,17 @@ export function createGame(): Game {
 }
 
 export const count = (game: Game, side: Side) => game.board.filter((piece) => piece === side).length;
+export function capturedCount(game: Game, side: Side) {
+  const opponent = other(side);
+  return 9 - game.reserve[opponent] - count(game, opponent);
+}
+
+export function lastCapture(game: Game) {
+  // A placement or move records its occupied destination. A capture records the emptied point.
+  if (game.last === null || game.board[game.last] !== null) return null;
+  return { at: game.last, by: game.winner ?? other(game.turn) };
+}
+
 export const placing = (game: Game) => game.reserve.mint + game.reserve.rose > 0;
 const inMill = (board: Game["board"], at: number, side: Side) =>
   mills.some((line) => line.includes(at) && line.every((point) => board[point] === side));

@@ -5,6 +5,7 @@ export const roomCode = /^[A-Z0-9]{6}$/;
 
 export type Room = {
   code: string;
+  local_match?: true;
   host_id: string;
   host_name: string;
   guest_name: string;
@@ -25,9 +26,12 @@ export type Room = {
   reacted_at: string | null;
   winner_id: string | null;
   finished_at: string | null;
+  host_rematch: boolean;
+  guest_rematch: boolean;
+  rematch_closed: boolean;
 };
 
-export type Match = Pick<Room, "code" | "winner_id" | "finished_at">;
+export type Match = { room_code: string; game_revision: number; winner_id: string; finished_at: string };
 
 export const characters = {
   kai: "ไค", momo: "โมโมะ", matcha: "มัทฉะ", sunny: "ซันนี่",

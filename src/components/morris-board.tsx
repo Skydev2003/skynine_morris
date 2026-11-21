@@ -2,17 +2,17 @@ import { captures, count, placing, points, targets, type Game, type Side } from 
 
 import { characters, colors, type Character, type PieceColor } from "@/lib/rooms";
 
-export function Board({ game, palette, active, selected, onPoint, revision }: {
+export function Board({ game, palette, active, selected, onPoint, impact }: {
   game: Game;
   palette: Record<Side, PieceColor>;
-  revision: number;
+  impact: { at: number; color: PieceColor; revision: number } | null;
   active: boolean;
   selected: number | null;
   onPoint: (at: number) => void;
 }) {
   const available = game.capture ? captures(game) : selected === null ? [] : targets(game, selected);
   const isPlacing = placing(game);
-  const impact = game.last !== null && game.board[game.last] === null ? points[game.last] : null;
+  const impactPoint = impact ? points[impact.at] : null;
   return (
     <div className="board" role="group" aria-label="กระดานมอร์ริส 24 จุด">
       <svg className="board-lines" viewBox="0 0 100 100" aria-hidden="true">
@@ -43,15 +43,17 @@ export function Board({ game, palette, active, selected, onPoint, revision }: {
           ><span key={piece && at === game.last ? `${piece}-latest` : piece ?? "empty"} /></button>
         );
       })}
-      {impact && <div className="capture-impact" key={revision} style={{ left: `${impact[0]}%`, top: `${impact[1]}%` }} aria-hidden="true">
+      {impact && impactPoint && <div className={`capture-impact color-${impact.color}`} key={impact.revision}
+        style={{ left: `${impactPoint[0]}%`, top: `${impactPoint[1]}%` }} aria-hidden="true">
         <span className="impact-ring" />
+        <span className="captured-piece" />
         {Array.from({ length: 8 }, (_, i) => <i key={i} style={{ rotate: `${i * 45}deg` }} />)}
       </div>}
     </div>
   );
 }
 
-export function Player({ side, game, current, you, character, color, name }: {
+export function Player({ side, game, current, you, character, color, name, taken }: {
   side: Side;
   game: Game;
   current: boolean;
@@ -59,6 +61,7 @@ export function Player({ side, game, current, you, character, color, name }: {
   character: Character;
   name: string;
   color: PieceColor;
+  taken: number;
 }) {
   const onBoard = count(game, side);
   const inHand = game.reserve[side];
@@ -70,6 +73,7 @@ export function Player({ side, game, current, you, character, color, name }: {
       <div className="piece-tallies">
         <div><strong>{onBoard}</strong><span>บนกระดาน</span></div>
         <div><strong>{inHand}</strong><span>ในมือ</span></div>
+        <div className="capture-tally" role="group" aria-label={`กินได้ ${taken} ตัว`}><strong key={taken}>{taken}</strong><span>กินได้</span></div>
       </div>
       <div className="piece-rack" aria-hidden="true">{Array.from({ length: 9 }, (_, i) => <i key={i} data-filled={i < onBoard + inHand} />)}</div>
     </section>

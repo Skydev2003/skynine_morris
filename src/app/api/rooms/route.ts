@@ -1,4 +1,4 @@
-import { randomInt } from "node:crypto";
+import { makeRoomCode, matchQueue, queueActions, type QueueAction } from "@/lib/match-queue";
 import { createClient } from "@supabase/supabase-js";
 import { createGame, isAction, other, play } from "@/lib/morris";
 import { roomDb } from "@/lib/room-db";
@@ -7,7 +7,7 @@ import { emojis, isCharacter, isPieceColor, playerName, roomCode, turnSeconds, t
 const auth = { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false };
 const reply = (error: string, status: number) => Response.json({ error }, { status });
 const conflict = () => reply("ห้องเพิ่งอัปเดต กรุณาลองอีกครั้ง", 409);
-const alphabet = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+const ticketFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function POST(request: Request) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -27,10 +27,15 @@ export async function POST(request: Request) {
 
   try {
     const db = roomDb(database);
+    if (queueActions.includes(input.op)) {
+      if (!name) return reply("ตั้งชื่อผู้เล่นก่อนเริ่มค้นหา", 422);
+      if (typeof input.ticket !== "string" || !ticketFormat.test(input.ticket)) return reply("ค้นหาคู่ไม่สำเร็จ กรุณาลองใหม่", 400);
+      return Response.json(await matchQueue(db, input.op as QueueAction, userId, input.ticket, name));
+    }
     if (input.op === "create") {
       if (!name) return reply("ตั้งชื่อผู้เล่นก่อนสร้างห้อง", 422);
       for (let attempt = 0; attempt < 4; attempt++) {
-        const code = Array.from({ length: 6 }, () => alphabet[randomInt(alphabet.length)]).join("");
+        const code = makeRoomCode();
         const { rows: [room] } = await db.query<Room>(
           "insert into public.morris_rooms (code, host_id, host_name, game) values ($1, $2, $3, $4) on conflict (code) do nothing returning *",
           [code, userId, name, createGame()],
@@ -87,6 +92,38 @@ export async function POST(request: Request) {
 
     if (!room.guest_id) return reply("รอเพื่อนเข้าห้องก่อน", 409);
     if (!room.started_at) return reply("การแข่งขันยังไม่เริ่ม", 409);
+
+    if (input.op === "rematch" || input.op === "end") {
+      if (input.version !== room.game_revision || !room.finished_at) return conflict();
+      if (input.op === "end") {
+        const { rows: [closed] } = await db.query<Room>(
+          `update public.morris_rooms set rematch_closed = true
+           where code = $1 and game_revision = $2 and finished_at is not null returning *`,
+          [room.code, room.game_revision],
+        );
+        return closed ? Response.json(closed) : conflict();
+      }
+      if (room.rematch_closed) return reply("ห้องนี้จบการแข่งขันแล้ว", 409);
+      const own = side === "mint" ? "host_rematch" : "guest_rematch";
+      const rival = side === "mint" ? "guest_rematch" : "host_rematch";
+      const { rows: [updated] } = await db.query<Room>(
+        `update public.morris_rooms
+         set ${own} = not ${rival}, ${rival} = false,
+             game = case when ${rival} then $3::jsonb else game end,
+             game_revision = game_revision + case when ${rival} then 1 else 0 end,
+             started_at = case when ${rival} then clock_timestamp() else started_at end,
+             turn_deadline = case when ${rival} then clock_timestamp() + $4::int * interval '1 second' else turn_deadline end,
+             winner_id = case when ${rival} then null else winner_id end,
+             finished_at = case when ${rival} then null else finished_at end,
+             finish_reason = case when ${rival} then null else finish_reason end,
+             reaction = case when ${rival} then null else reaction end,
+             reacted_at = case when ${rival} then null else reacted_at end
+         where code = $1 and game_revision = $2 and finished_at is not null and not rematch_closed
+         returning *`,
+        [room.code, room.game_revision, createGame(), turnSeconds],
+      );
+      return updated ? Response.json(updated) : conflict();
+    }
 
     if (input.op === "react") {
       if (!emojis.includes(input.emoji)) return reply("เลือกอิโมจิจากรายการ", 400);

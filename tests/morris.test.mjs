@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createGame, play, targets } from "../src/lib/morris.ts";
+import { capturedCount, lastCapture, createGame, play, targets } from "../src/lib/morris.ts";
 
 function placeSequence(points) {
   let game = createGame();
@@ -16,6 +16,14 @@ test("a mill requires a capture before handing over the turn", () => {
   const next = play(game, "mint", { type: "capture", at: 8 });
   assert.equal(next.board[8], null);
   assert.equal(next.turn, "rose");
+  assert.equal(capturedCount(game, "mint"), 0);
+  assert.equal(capturedCount(next, "mint"), 1);
+  assert.equal(capturedCount(next, "rose"), 0);
+  assert.equal(lastCapture(game), null);
+  assert.deepEqual(lastCapture(next), { at: 8, by: "mint" });
+  const placed = play(next, "rose", { type: "place", at: 10 });
+  assert.equal(capturedCount(placed, "mint"), 1);
+  assert.equal(lastCapture(placed), null);
 });
 
 test("a piece inside a mill is protected while other pieces can be captured", () => {
@@ -36,7 +44,9 @@ test("three pieces can fly and taking a third remaining piece wins the game", ()
   for (const at of [8, 9, 10]) game.board[at] = "rose";
   assert.ok(targets(game, 16).includes(2));
   const mill = play(game, "mint", { type: "move", from: 16, at: 2 });
-  assert.equal(play(mill, "mint", { type: "capture", at: 9 }).winner, "mint");
+  const finish = play(mill, "mint", { type: "capture", at: 9 });
+  assert.equal(finish.winner, "mint");
+  assert.deepEqual(lastCapture(finish), { at: 9, by: "mint" });
 });
 
 test("players with four pieces can only slide to an adjacent point", () => {
