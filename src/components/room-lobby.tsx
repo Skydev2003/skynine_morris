@@ -3,11 +3,12 @@ import { characters, colors, type Character, type PieceColor, type Room } from "
 
 type Seat = "host" | "guest";
 
-function LoadoutCard({ character, color, ready, label, missing, mine }: {
+function LoadoutCard({ character, color, ready, label, missing, mine, name }: {
   character: Character;
   color: PieceColor;
-  ready: boolean;
+  ready?: boolean;
   label: string;
+  name: string;
   missing?: boolean;
   mine: boolean;
 }) {
@@ -16,10 +17,10 @@ function LoadoutCard({ character, color, ready, label, missing, mine }: {
       <div className="loadout-role">{label}{mine && <span>คุณ</span>}</div>
       <div className={`loadout-portrait portrait-${character}`} aria-hidden="true">{missing && <UserRound />}</div>
       <div className="loadout-name">
-        <strong>{missing ? "รอเพื่อนเข้าห้อง" : characters[character]}</strong>
-        {!missing && <span><i className="color-chip" /> หมากสี{colors[color]}</span>}
+        <strong>{missing ? "รอเพื่อนเข้าห้อง" : name}</strong>
+        {!missing && <span>{characters[character]} · <i className="color-chip" /> หมากสี{colors[color]}</span>}
       </div>
-      <div className="ready-tag" data-ready={ready && !missing}>{ready && !missing ? <><Check /> พร้อม</> : <><Hourglass /> {missing ? "ยังไม่มีผู้เล่น" : "กำลังเตรียมตัว"}</>}</div>
+      {ready !== undefined && <div className="ready-tag" data-ready={ready && !missing}>{ready && !missing ? <><Check /> พร้อม</> : <><Hourglass /> {missing ? "ยังไม่มีผู้เล่น" : "กำลังเตรียมตัว"}</>}</div>}
     </div>
   );
 }
@@ -36,7 +37,7 @@ export function RoomLobby({ room, seat, pending, copied, copy, send }: {
   const ownColor = room[`${seat}_color`];
   const ownReady = room[`${seat}_ready`];
   const takenColor = room[seat === "host" ? "guest_color" : "host_color"];
-  const bothReady = Boolean(room.guest_id && room.host_ready && room.guest_ready);
+  const canStart = Boolean(room.guest_id && room.guest_ready);
   const change = (character: Character, color: PieceColor) => send({ op: "loadout", character, color });
 
   return (
@@ -46,9 +47,9 @@ export function RoomLobby({ room, seat, pending, copied, copy, send }: {
         <button className="invite-code" type="button" onClick={copy} aria-label="คัดลอกรหัสห้อง"><span>{copied ? "คัดลอกแล้ว" : "รหัสห้อง"}</span><strong>{room.code}</strong><Copy /></button>
       </div>
       <div className="versus-roster" aria-live="polite">
-        <LoadoutCard character={room.host_character} color={room.host_color} ready={room.host_ready} label="โฮสต์" mine={seat === "host"} />
+        <LoadoutCard character={room.host_character} color={room.host_color} name={room.host_name} label="โฮสต์" mine={seat === "host"} />
         <span className="vs-emblem" aria-hidden="true">VS</span>
-        <LoadoutCard character={room.guest_character} color={room.guest_color} ready={room.guest_ready} label="ผู้เข้าร่วม" missing={!room.guest_id} mine={seat === "guest"} />
+        <LoadoutCard character={room.guest_character} color={room.guest_color} name={room.guest_name} ready={room.guest_ready} label="ผู้เข้าร่วม" missing={!room.guest_id} mine={seat === "guest"} />
       </div>
       <div className="setup-deck">
         <fieldset disabled={pending}>
@@ -73,13 +74,13 @@ export function RoomLobby({ room, seat, pending, copied, copy, send }: {
           </div>
         </fieldset>
         <div className="ready-actions">
-          <button className={ownReady ? "outline" : "primary"} type="button" disabled={pending} aria-pressed={ownReady} onClick={() => send({ op: "ready", ready: !ownReady })}>
+          {seat === "guest" && <button className={ownReady ? "outline" : "primary"} type="button" disabled={pending} aria-pressed={ownReady} onClick={() => send({ op: "ready", ready: !ownReady })}>
             <Check /> {ownReady ? "ยกเลิกพร้อม" : "พร้อมแล้ว"}
-          </button>
-          {seat === "host" && <button className="primary start-button" type="button" disabled={pending || !bothReady} onClick={() => send({ op: "start" })}><Swords /> เริ่มเกม</button>}
+          </button>}
+          {seat === "host" && <button className="primary start-button" type="button" disabled={pending || !canStart} onClick={() => send({ op: "start" })}><Swords /> เริ่มเกม</button>}
         </div>
       </div>
-      <p className="lobby-message" role="status">{!room.guest_id ? "ส่งรหัสห้องให้เพื่อนเพื่อเข้าร่วม" : bothReady ? seat === "host" ? "พร้อมทั้งคู่แล้ว เริ่มเกมได้เลย" : "พร้อมทั้งคู่แล้ว รอโฮสต์เริ่มเกม" : "เลือกตัวละครและสีหมาก แล้วกดพร้อม"}</p>
+      <p className="lobby-message" role="status">{!room.guest_id ? "ส่งรหัสห้องให้เพื่อนเพื่อเข้าร่วม" : canStart ? seat === "host" ? "เพื่อนพร้อมแล้ว เริ่มเกมได้เลย" : "รอโฮสต์เริ่มเกม" : seat === "host" ? "เลือกตัวละครและสีหมากระหว่างรอเพื่อนพร้อม" : "เลือกตัวละครและสีหมาก แล้วกดพร้อม"}</p>
     </section>
   );
 }

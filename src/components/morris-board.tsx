@@ -35,6 +35,7 @@ export function Board({ game, palette, active, selected, onPoint, revision }: {
             type="button"
             className={`point ${piece ? `piece color-${palette[piece]}` : "empty"} ${choice ? "choice" : ""} ${at === selected ? "selected" : ""} ${at === game.last && piece ? "last" : ""}`}
             style={{ left: `${x}%`, top: `${y}%` }}
+            data-point={at}
             disabled={!playable}
             aria-label={`จุด ${at + 1} ${piece ? `หมาก${colors[palette[piece]]}` : "ว่าง"}${choice ? " เลือกได้" : ""}`}
             aria-pressed={at === selected}
@@ -50,12 +51,13 @@ export function Board({ game, palette, active, selected, onPoint, revision }: {
   );
 }
 
-export function Player({ side, game, current, you, character, color }: {
+export function Player({ side, game, current, you, character, color, name }: {
   side: Side;
   game: Game;
   current: boolean;
   you: boolean;
   character: Character;
+  name: string;
   color: PieceColor;
 }) {
   const onBoard = count(game, side);
@@ -64,7 +66,7 @@ export function Player({ side, game, current, you, character, color }: {
     <section className={`duelist color-${color} ${you ? "duelist-you" : "duelist-rival"}${current ? " current" : ""}`} aria-label={you ? "หมากของคุณ" : "หมากคู่แข่ง"}>
       <span className="duelist-role">{you ? "คุณ" : "คู่แข่ง"}{current && <i className="color-chip" />}</span>
       <div className={`duelist-portrait portrait-${character}`} aria-hidden="true" />
-      <h2>{characters[character]}</h2>
+      <h2 title={name}>{name}</h2><small className="duelist-character">{characters[character]}</small>
       <div className="piece-tallies">
         <div><strong>{onBoard}</strong><span>บนกระดาน</span></div>
         <div><strong>{inHand}</strong><span>ในมือ</span></div>

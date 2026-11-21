@@ -10,7 +10,7 @@ export function roomDb(connectionString: string) {
     connectionString,
     ssl: host.endsWith(".supabase.co") || host.endsWith(".supabase.com") ? { ca: supabaseCa } : undefined,
     max: 3,
-    idleTimeoutMillis: 5_000,
+    idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 5_000,
   });
   pool.on("error", (error) => console.error("Morris idle database connection closed", "code" in error ? error.code : error.name));

@@ -5,6 +5,7 @@ import { ArrowRight, Eye, EyeOff, Mail } from "lucide-react";
 import { browserDb } from "@/lib/browser-db";
 import { useMorris } from "@/lib/store";
 import { Logo } from "./logo";
+import { GameLottie } from "./game-lottie";
 
 export function AuthScreen({ configured }: { configured: boolean }) {
   const [signup, setSignup] = useState(false);
@@ -74,7 +75,7 @@ export function AuthScreen({ configured }: { configured: boolean }) {
               placeholder={signup ? "อย่างน้อย 8 ตัวอักษร" : "กรอกรหัสผ่าน"} value={password} onChange={(event) => setPassword(event.target.value)} />
             <button type="button" onClick={() => setVisible(!visible)} aria-label={visible ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}>{visible ? <EyeOff /> : <Eye />}</button>
           </div>
-          <button className="primary wide auth-cta" disabled={pending || !configured}>{pending ? "กำลังดำเนินการ…" : signup ? "สร้างบัญชี" : "เข้าสู่สนาม"}<ArrowRight /></button>
+          <button className="primary wide auth-cta" disabled={pending || !configured}>{pending ? <><GameLottie kind="loading" /> กำลังดำเนินการ</> : <>{signup ? "สร้างบัญชี" : "เข้าสู่สนาม"}<ArrowRight /></>}</button>
         </form>
         {!configured && <p className="feedback" role="status">ยังไม่ได้ตั้งค่า Supabase สำหรับเข้าสู่ระบบ</p>}
         {feedback && <p className={feedback.error ? "feedback" : "success"} role={feedback.error ? "alert" : "status"}>{feedback.text}</p>}

@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { AuthScreen } from "./auth-screen";
 import { MatchStage } from "./match-stage";
 import { RoomLobby } from "./room-lobby";
-import { ArrowLeft, ArrowRight, BookOpen, LogOut, Swords, Trophy, X } from "lucide-react";
-import { captures, placing, targets, type Action } from "@/lib/morris";
+import { GameLottie } from "./game-lottie";
+import { ArrowLeft, ArrowRight, BookOpen, Pencil, LogOut, Swords, Trophy, X } from "lucide-react";
+import { captures, placing, play, targets, type Action } from "@/lib/morris";
 import { browserDb, onlineConfigured } from "@/lib/browser-db";
-import { roomCode, type Match, type Room } from "@/lib/rooms";
+import { playerName, roomCode, turnSeconds, type Match, type Room } from "@/lib/rooms";
 import { useMorris } from "@/lib/store";
 
 type Modal = "rules" | "history";
@@ -32,8 +33,12 @@ function Dialog({ children, title, close }: { children: ReactNode; title: string
 
 export default function MorrisClub() {
   const state = useMorris();
-  const { session, room, selected, joinCode, setJoinCode, wins, matches } = state;
+  const { session, room, selected, joinCode, setJoinCode, wins, matches, optimistic } = state;
   const userId = session?.user.id;
+  const name = playerName(session?.user.user_metadata.player_name);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [authReady, setAuthReady] = useState(!onlineConfigured);
   const code = room?.code;
   const side = room && (room.host_id === userId ? "mint" : "rose");
   const [modal, setModal] = useState<Modal | null>(null);
@@ -48,7 +53,10 @@ export default function MorrisClub() {
     const invite = new URLSearchParams(window.location.search).get("room")?.toUpperCase();
     if (invite && roomCode.test(invite)) useMorris.getState().setJoinCode(invite);
     if (!db) return;
-    const { data } = db.auth.onAuthStateChange((_event, current) => useMorris.getState().setSession(current));
+    const { data } = db.auth.onAuthStateChange((_event, current) => {
+      useMorris.getState().setSession(current);
+      setAuthReady(true);
+    });
     return () => data.subscription.unsubscribe();
   }, []);
 
@@ -74,11 +82,22 @@ export default function MorrisClub() {
       const { data } = await db.from("morris_rooms").select().eq("code", code).maybeSingle<Room>();
       if (data) useMorris.getState().syncRoom(data);
     };
+    let connected = false;
+    let lastSync = 0;
     const channel = db.channel(`morris:${code}`).on("postgres_changes", {
       event: "UPDATE", schema: "public", table: "morris_rooms", filter: `code=eq.${code}`,
-    }, ({ new: updated }) => useMorris.getState().syncRoom(updated as Room))
-      .subscribe((status) => { if (status === "SUBSCRIBED") void refresh(); });
-    const timer = window.setInterval(refresh, 5000);
+    }, ({ new: updated }) => {
+      lastSync = Date.now();
+      useMorris.getState().syncRoom(updated as Room);
+    }).subscribe((status) => {
+      connected = status === "SUBSCRIBED";
+      if (connected) { lastSync = Date.now(); void refresh(); }
+    });
+    const timer = window.setInterval(() => {
+      if (connected && Date.now() - lastSync < 5400) return;
+      lastSync = Date.now();
+      void refresh();
+    }, 1350);
     document.addEventListener("visibilitychange", refresh);
     return () => {
       window.clearInterval(timer);
@@ -127,9 +146,13 @@ export default function MorrisClub() {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify(input),
+        signal: AbortSignal.timeout(12_000),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "เชื่อมต่อไม่สำเร็จ");
+      if (!response.ok) {
+        if (input.op === "timeout" && response.status === 409) return;
+        throw new Error(data.error ?? "เชื่อมต่อไม่สำเร็จ");
+      }
       const current = useMorris.getState();
       if (current.session?.user.id !== session.user.id) return;
       if (open) {
@@ -144,22 +167,29 @@ export default function MorrisClub() {
     } catch (error) {
       setError(error instanceof Error ? error.message : "เชื่อมต่อไม่สำเร็จ");
     } finally {
+      if (input.op === "play") useMorris.getState().previewMove(null);
       busy.current = false;
       setPending(false);
     }
   }
 
   function point(at: number) {
-    if (!room || !active) return;
+    if (!room || !side || !active || busy.current) return;
+    if (room.turn_deadline && Date.now() >= Date.parse(room.turn_deadline)) return;
     const game = room.game;
     let action: Action | undefined;
-    if (game.capture && captures(game).includes(at)) action = { type: "capture", at };
-    else if (placing(game) && !game.board[at]) action = { type: "place", at };
+    if (game.capture) {
+      if (captures(game).includes(at)) action = { type: "capture", at };
+    } else if (placing(game) && !game.board[at]) action = { type: "place", at };
     else if (!placing(game)) {
       if (game.board[at] === game.turn) { state.select(selected === at ? null : at); return; }
       if (selected !== null && targets(game, selected).includes(at)) action = { type: "move", from: selected, at };
     }
     if (!action) return;
+    const preview = play(game, side, action);
+    const deadline = preview.winner ? null : preview.turn === game.turn ? room.turn_deadline
+      : new Date(Date.now() + turnSeconds * 1000).toISOString();
+    state.previewMove({ code: room.code, version: room.game_revision, game: preview, deadline });
     void send({ op: "play", code, version: room.game_revision, action });
   }
 
@@ -185,15 +215,45 @@ export default function MorrisClub() {
     const { error } = await db.auth.signOut();
     if (error) { setError("ออกจากระบบไม่สำเร็จ กรุณาลองอีกครั้ง"); return; }
     leaveRoom();
+    setEditingName(false);
+    setNameInput("");
   }
 
   const active = Boolean(room?.started_at && !pending && !room.game.winner && side === room.game.turn);
+  const prediction = optimistic && optimistic.code === room?.code && optimistic.version === room.game_revision ? optimistic : null;
+  const shownRoom = room && prediction ? { ...room, game: prediction.game, game_revision: room.game_revision + 1,
+    turn_deadline: prediction.deadline } : room;
 
+  async function saveName(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const db = browserDb();
+    const next = playerName(nameInput);
+    if (!db || pending) return;
+    if (!next) { setError("ชื่อผู้เล่นต้องมี 2–24 ตัวอักษร"); return; }
+    setPending(true);
+    setError("");
+    try {
+      const updated = await db.auth.updateUser({ data: { player_name: next } });
+      if (updated.error) throw updated.error;
+      const refreshed = await db.auth.refreshSession();
+      if (refreshed.error || !refreshed.data.session) throw new Error("refresh");
+      state.setSession(refreshed.data.session);
+      setEditingName(false);
+    } catch {
+      setError("บันทึกชื่อไม่สำเร็จ กรุณาลองอีกครั้ง");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  if (!authReady) return <main className="game-loading" role="status"><GameLottie kind="loading" /><span>กำลังเข้าสู่สนาม</span></main>;
   if (!session) return <AuthScreen configured={onlineConfigured} />;
 
   return (
     <>
       <main className={`game-world ${room ? "stadium-world" : "menu-world"}`} key={room ? room.code : "menu"}>
+        {room && <GameLottie kind="ambient" />}
+        {pending && !room && <div className="loading-badge" role="status"><GameLottie kind="loading" /><span>กำลังโหลด</span></div>}
         <div className="world-corner corner-left">
           {room && <button className="hud-button" onClick={leaveRoom} disabled={pending} aria-label="กลับหน้าเลือกห้อง" title="กลับหน้าเลือกห้อง"><ArrowLeft /><span className="hud-label">กลับ</span></button>}
         </div>
@@ -202,8 +262,24 @@ export default function MorrisClub() {
           <button className="hud-button" onClick={() => setModal("rules")} aria-label="วิธีเล่น" title="วิธีเล่น"><BookOpen /></button>
           {!room && <button className="hud-button" onClick={signOut} disabled={pending} aria-label="ออกจากระบบ" title="ออกจากระบบ"><LogOut /></button>}
         </div>
-        {room && side ? room.started_at ? (
-          <MatchStage room={room} side={side} selected={selected} pending={pending} reaction={reaction} error={error} point={point}
+        {(!name || editingName) ? (
+          <section className="entry-menu name-menu">
+            <h1>ชื่อผู้เล่น</h1>
+            <p>ชื่อนี้จะแสดงให้เพื่อนเห็นในเกม</p>
+            <form className="login-form" onSubmit={saveName}>
+              <label htmlFor="player-name">ชื่อที่ใช้เล่น</label>
+              <input id="player-name" value={nameInput} onChange={(event) => setNameInput(event.target.value)} minLength={2} maxLength={24}
+                placeholder="เช่น มะลิ" required />
+              <button className="primary wide" disabled={pending}>บันทึกชื่อ <ArrowRight /></button>
+              {name && <button type="button" className="outline" disabled={pending} onClick={() => setEditingName(false)}>ยกเลิก</button>}
+            </form>
+            {error && <p className="feedback" role="alert">{error}</p>}
+          </section>
+        ) : shownRoom && room && side ? room.started_at ? (
+          <MatchStage room={shownRoom} side={side} selected={selected} pending={pending} reaction={reaction} error={error} point={point}
+            expired={() => {
+              if (!prediction && room.turn_deadline && !room.game.winner) void send({ op: "timeout", code, version: room.game_revision });
+            }}
             react={(emoji) => void send({ op: "react", code, emoji })} />
         ) : (
           <>
@@ -214,7 +290,9 @@ export default function MorrisClub() {
         ) : (
           <section className="entry-menu" aria-labelledby="entry-title">
             <h1 id="entry-title">Morris<br /> Club</h1>
-            <p>ศึกวางหมากสองผู้เล่น</p>
+            <p className="profile-name"><span>{name}</span><button type="button" className="icon-button" aria-label="แก้ไขชื่อผู้เล่น" onClick={() => {
+              setNameInput(name); setEditingName(true); setError("");
+            }}><Pencil /></button></p>
             <button className="primary wide create" disabled={pending} onClick={() => send({ op: "create" }, true)}><Swords /> สร้างห้องใหม่ <ArrowRight /></button>
             <form className="join" onSubmit={(event) => { event.preventDefault(); void send({ op: "join", code: joinCode }, true); }}>
               <input aria-label="รหัสห้อง 6 ตัว" autoComplete="off" autoCapitalize="characters" spellCheck={false} placeholder="รหัสห้อง 6 ตัว" value={joinCode}

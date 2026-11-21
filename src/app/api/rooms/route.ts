@@ -1,8 +1,8 @@
 import { randomInt } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { createGame, isAction, play } from "@/lib/morris";
+import { createGame, isAction, other, play } from "@/lib/morris";
 import { roomDb } from "@/lib/room-db";
-import { emojis, isCharacter, isPieceColor, roomCode, type Room } from "@/lib/rooms";
+import { emojis, isCharacter, isPieceColor, playerName, roomCode, turnSeconds, type Room } from "@/lib/rooms";
 
 const auth = { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false };
 const reply = (error: string, status: number) => Response.json({ error }, { status });
@@ -17,8 +17,10 @@ export async function POST(request: Request) {
 
   const token = request.headers.get("authorization")?.match(/^Bearer (\S+)$/i)?.[1];
   if (!token) return reply("กรุณาเข้าสู่ระบบก่อน", 401);
-  const { data: { user }, error: authError } = await createClient(url, key, { auth }).auth.getUser(token);
-  if (authError || !user) return reply("กรุณาเข้าสู่ระบบอีกครั้ง", 401);
+  const { data, error: authError } = await createClient(url, key, { auth }).auth.getClaims(token);
+  const userId = data?.claims.sub;
+  if (authError || !userId || data.claims.role !== "authenticated") return reply("กรุณาเข้าสู่ระบบอีกครั้ง", 401);
+  const name = playerName(data.claims.user_metadata?.player_name);
 
   const input = await request.json().catch(() => null);
   if (!input || typeof input !== "object") return reply("คำขอไม่ถูกต้อง", 400);
@@ -26,11 +28,12 @@ export async function POST(request: Request) {
   try {
     const db = roomDb(database);
     if (input.op === "create") {
+      if (!name) return reply("ตั้งชื่อผู้เล่นก่อนสร้างห้อง", 422);
       for (let attempt = 0; attempt < 4; attempt++) {
         const code = Array.from({ length: 6 }, () => alphabet[randomInt(alphabet.length)]).join("");
         const { rows: [room] } = await db.query<Room>(
-          "insert into public.morris_rooms (code, host_id, game) values ($1, $2, $3) on conflict (code) do nothing returning *",
-          [code, user.id, createGame()],
+          "insert into public.morris_rooms (code, host_id, host_name, game) values ($1, $2, $3, $4) on conflict (code) do nothing returning *",
+          [code, userId, name, createGame()],
         );
         if (room) return Response.json(room);
       }
@@ -41,13 +44,14 @@ export async function POST(request: Request) {
     const { rows: [room] } = await db.query<Room>("select * from public.morris_rooms where code = $1", [input.code]);
     if (!room) return reply("ไม่พบห้องนี้ ตรวจสอบรหัสแล้วลองอีกครั้ง", 404);
 
-    const side = room.host_id === user.id ? "mint" : room.guest_id === user.id ? "rose" : null;
+    const side = room.host_id === userId ? "mint" : room.guest_id === userId ? "rose" : null;
     if (input.op === "join") {
       if (side) return Response.json(room);
       if (room.guest_id) return reply("ห้องนี้มีผู้เล่นครบแล้ว", 409);
+      if (!name) return reply("ตั้งชื่อผู้เล่นก่อนเข้าห้อง", 422);
       const { rows: [joined] } = await db.query<Room>(
-        "update public.morris_rooms set guest_id = $1 where code = $2 and guest_id is null returning *",
-        [user.id, room.code],
+        "update public.morris_rooms set guest_id = $1, guest_name = $2 where code = $3 and guest_id is null returning *",
+        [userId, name, room.code],
       );
       return joined ? Response.json(joined) : conflict();
     }
@@ -58,14 +62,15 @@ export async function POST(request: Request) {
 
       if (input.op === "start") {
         if (side !== "mint") return reply("โฮสต์เป็นคนเริ่มเกม", 403);
-        if (!room.guest_id || !room.host_ready || !room.guest_ready) return reply("รอให้ผู้เล่นทั้งสองกดพร้อม", 409);
+        if (!room.guest_id || !room.guest_ready) return reply("รอให้ผู้เข้าร่วมกดพร้อม", 409);
         const { rows: [started] } = await db.query<Room>(
-          "update public.morris_rooms set started_at = clock_timestamp() where code = $1 and revision = $2 and started_at is null returning *",
-          [room.code, room.revision],
+          "update public.morris_rooms set started_at = clock_timestamp(), turn_deadline = clock_timestamp() + $3::int * interval '1 second' where code = $1 and revision = $2 and started_at is null returning *",
+          [room.code, room.revision, turnSeconds],
         );
         return started ? Response.json(started) : conflict();
       }
 
+      if (input.op === "ready" && side === "mint") return reply("โฮสต์เริ่มเกมได้เมื่อเพื่อนพร้อม", 422);
       const seat = side === "mint" ? "host" : "guest";
       const character = input.op === "loadout" ? input.character : room[`${seat}_character`];
       const color = input.op === "loadout" ? input.color : room[`${seat}_color`];
@@ -89,9 +94,22 @@ export async function POST(request: Request) {
         `update public.morris_rooms set reaction = $1, reacted_at = clock_timestamp()
          where code = $2 and (reacted_at is null or reacted_at < clock_timestamp() - interval '650 milliseconds')
          returning *`,
-        [{ emoji: input.emoji, sender: user.id }, room.code],
+        [{ emoji: input.emoji, sender: userId }, room.code],
       );
       return updated ? Response.json(updated) : reply("รอสักครู่ก่อนส่งอีกครั้ง", 429);
+    }
+
+    if (input.op === "timeout") {
+      if (input.version !== room.game_revision || !room.turn_deadline || room.game.winner) return conflict();
+      const winner = other(room.game.turn);
+      const { rows: [updated] } = await db.query<Room>(
+        `update public.morris_rooms set game = $1, winner_id = $2, finished_at = clock_timestamp(),
+               game_revision = game_revision + 1, turn_deadline = null, finish_reason = 'timeout'
+         where code = $3 and game_revision = $4 and winner_id is null and turn_deadline <= clock_timestamp()
+         returning *`,
+        [{ ...room.game, winner, capture: false, last: null }, winner === "mint" ? room.host_id : room.guest_id, room.code, room.game_revision],
+      );
+      return updated ? Response.json(updated) : conflict();
     }
 
     if (input.op !== "play" || !isAction(input.action)) return reply("คำสั่งเดินหมากไม่ถูกต้อง", 400);
@@ -108,9 +126,13 @@ export async function POST(request: Request) {
     const { rows: [updated] } = await db.query<Room>(
       `update public.morris_rooms
        set game = $1, game_revision = game_revision + 1, winner_id = $2,
-           finished_at = case when $2::uuid is null then null else clock_timestamp() end
-       where code = $3 and game_revision = $4 returning *`,
-      [game, winner, room.code, room.game_revision],
+           finished_at = case when $2::uuid is null then null else clock_timestamp() end,
+           turn_deadline = case when $2::uuid is not null then null
+                                when $5 or turn_deadline is null then clock_timestamp() + $6::int * interval '1 second'
+                                else turn_deadline end
+       where code = $3 and game_revision = $4 and (turn_deadline is null or turn_deadline > clock_timestamp())
+       returning *`,
+      [game, winner, room.code, room.game_revision, game.turn !== room.game.turn, turnSeconds],
     );
     return updated ? Response.json(updated) : conflict();
   } catch (error) {
