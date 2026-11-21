@@ -9,7 +9,7 @@ import { Board, Player } from "./morris-board";
 export function MatchStage({ room, confirmed, cue, side, selected, pending, reaction, error, point, react, expired }: {
   room: Room;
   confirmed: Room;
-  cue: (name: "place" | "capture" | "win" | "loss" | "start") => void;
+  cue: (name: "place" | "capture" | "capture-hit" | "win" | "loss" | "start") => void;
   side: Side;
   selected: number | null;
   pending: boolean;
@@ -55,7 +55,7 @@ export function MatchStage({ room, confirmed, cue, side, selected, pending, reac
     if (revision <= seenRevision.current) return;
     seenRevision.current = revision;
     if (confirmed.game.winner) playCue(confirmed.game.winner === side ? "win" : "loss");
-    else if (at !== undefined && by) playCue("capture");
+    else if (at !== undefined && by) playCue(by === side ? "capture" : "capture-hit");
     if (at !== undefined && by) {
       const frame = window.requestAnimationFrame(() => setCaptureNotice({ at, by, revision }));
       return () => window.cancelAnimationFrame(frame);
@@ -82,10 +82,11 @@ export function MatchStage({ room, confirmed, cue, side, selected, pending, reac
         </div>
         </div>
       </div>
-      <Player side={side} game={game} current={myTurn && !game.winner} you name={names[side]} taken={capturedCount(confirmed.game, side)} character={character[side]} color={palette[side]} />
+      <Player side={side} game={game} current={myTurn && !game.winner} you name={names[side]} taken={capturedCount(confirmed.game, side)}
+        character={character[side]} color={palette[side]} capturePulse={captureNotice?.by === side} />
       <div className="table-center">
         <Board game={game} active={canPlay} selected={selected} onPoint={point} palette={palette}
-          impact={captureNotice && { at: captureNotice.at, color: palette[other(captureNotice.by)], revision: captureNotice.revision }} />
+          impact={captureNotice && { at: captureNotice.at, color: palette[other(captureNotice.by)], revision: captureNotice.revision, own: ownCapture }} />
         <div className="capture-announcement" role="status" aria-atomic="true">
           {captureNotice && <div className={`capture-banner ${ownCapture ? "capture-success" : "capture-loss"}`} key={captureNotice.revision}>
             {ownCapture ? <Sparkles aria-hidden="true" /> : <CircleMinus aria-hidden="true" />}
@@ -97,7 +98,8 @@ export function MatchStage({ room, confirmed, cue, side, selected, pending, reac
           {reaction.emoji}<small>{reaction.sender === (side === "mint" ? room.host_id : room.guest_id) ? "คุณ" : "คู่แข่ง"}</small>
         </div>}
       </div>
-      <Player side={rival} game={game} current={!myTurn && !game.winner} you={false} name={names[rival]} taken={capturedCount(confirmed.game, rival)} character={character[rival]} color={palette[rival]} />
+      <Player side={rival} game={game} current={!myTurn && !game.winner} you={false} name={names[rival]} taken={capturedCount(confirmed.game, rival)}
+        character={character[rival]} color={palette[rival]} capturePulse={captureNotice?.by === rival} />
       <div className="table-controls">
         <PieceTray key={`${game.turn}-${game.reserve[side]}`} count={game.reserve[side]} color={palette[side]}
           enabled={canPlay && placing(game) && !game.capture && game.reserve[side] > 0} place={point} />

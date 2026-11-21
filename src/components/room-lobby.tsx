@@ -1,6 +1,7 @@
 import { Check, Copy, Hourglass, Lock, Swords, UserPlus, UserRound } from "lucide-react";
 import { characters, colors, type Character, type PieceColor, type Room } from "@/lib/rooms";
 import { STARTER_CHARACTERS, STARTER_COLORS, type ShopState } from "@/lib/shop";
+import { LobbyWait } from "./arena-wait";
 
 type Seat = "host" | "guest";
 
@@ -55,9 +56,12 @@ export function RoomLobby({ room, seat, pending, copied, copy, send, inventory, 
         <span className="vs-emblem" aria-hidden="true">VS</span>
         <LoadoutCard character={room.guest_character} color={room.guest_color} name={room.guest_name} ready={room.guest_ready} label="ผู้เข้าร่วม" missing={!room.guest_id} mine={seat === "guest"} />
       </div>
-      {seat === "host" && !room.guest_id && <button className="outline invite-friend-lobby" type="button" onClick={invite}>
-        <UserPlus aria-hidden="true" /> ชวนเพื่อนเข้าห้อง
-      </button>}
+      {seat === "host" && !room.guest_id && <div className="lobby-wait">
+        <LobbyWait />
+        <button className="outline invite-friend-lobby" type="button" onClick={invite}>
+          <UserPlus aria-hidden="true" /> ชวนเพื่อนเข้าห้อง
+        </button>
+      </div>}
       <div className="setup-deck">
         <fieldset disabled={pending}>
           <legend>ตัวละคร</legend>

@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AuthScreen } from "./auth-screen";
+import { MatchSearch } from "./arena-wait";
 import { ClubFriends, InviteActions, type SocialCommand } from "./club-friends";
 import { ClubShop } from "./club-shop";
+import { ClubPreview } from "./club-preview";
 import { Dialog } from "./dialog";
 import { GameDetails } from "./game-details";
 import { Leaderboard } from "./leaderboard";
@@ -12,7 +14,7 @@ import { MatchStage } from "./match-stage";
 import { PlayerAvatar, PlayerProfile } from "./player-profile";
 import { RoomLobby } from "./room-lobby";
 import { GameLottie } from "./game-lottie";
-import { ArrowLeft, ArrowRight, BookOpen, LogOut, ShoppingBag, Shuffle, Swords, Trophy, UsersRound, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, DoorOpen, LogOut, Music2, ShoppingBag, Shuffle, Swords, Trophy, UsersRound, Volume2, VolumeX } from "lucide-react";
 import { captures, placing, play, targets, type Action } from "@/lib/morris";
 import { browserDb, googleInviteKey, onlineConfigured } from "@/lib/browser-db";
 import { playerName, roomCode, turnSeconds, type Match, type Room } from "@/lib/rooms";
@@ -48,8 +50,11 @@ export default function MorrisClub() {
   const [inviteError, setInviteError] = useState("");
   const busy = useRef(false);
   const socialBusy = useRef(false);
-  const sound = useArenaAudio(Boolean(room?.started_at && !room.finished_at));
-  const matchmaking = useMatchmaking(session, name, openMatch);
+  const sound = useArenaAudio(room ? (room.finished_at ? null : "arena") : name && !editingName ? "club" : null);
+  const matchmaking = useMatchmaking(session, name, (matched) => {
+    sound.cue("matched");
+    openMatch(matched);
+  });
   const social = useSocial(userId);
   const shop = useShop(userId, room?.finished_at);
 
@@ -342,7 +347,7 @@ export default function MorrisClub() {
 
   return (
     <>
-      <main className={`game-world ${room ? "stadium-world" : "menu-world title-world"}`} key={room ? room.code : "menu"}>
+      <main className={`game-world ${room ? "stadium-world" : titleScreen ? "club-world" : "menu-world title-world"}`} key={room ? room.code : "menu"}>
         {room && <GameLottie kind="ambient" />}
         {pending && !room && <div className="loading-badge" role="status"><GameLottie kind="loading" /><span>กำลังโหลด</span></div>}
         <div className="world-corner corner-left">
@@ -358,9 +363,19 @@ export default function MorrisClub() {
           }}><ArrowLeft aria-hidden="true" /><span>กลับเมนู</span></button>}
         </div>
         <div className="world-corner corner-right">
-          <button className="hud-button sound-toggle" onClick={sound.toggle} aria-label={sound.muted ? "เปิดเสียง" : "ปิดเสียง"} title={sound.muted ? "เปิดเสียง" : "ปิดเสียง"}>
-            {sound.muted ? <VolumeX /> : <Volume2 />}
-          </button>
+          {titleScreen ? (
+            <button className="club-audio" type="button" data-sound-control data-playing={sound.playing}
+              onClick={sound.toggle} aria-label="เสียงเกม" aria-pressed={sound.playing}
+              title={sound.playing ? "ปิดเสียงเกม" : "เปิดเพลงและเสียงเกม"}>
+              {sound.playing ? <Music2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
+              <span className="club-audio-meter" aria-hidden="true"><i /><i /><i /></span>
+            </button>
+          ) : (
+            <button className="hud-button sound-toggle" type="button" data-sound-control onClick={sound.toggle}
+              aria-label={sound.enabled ? "ปิดเสียง" : "เปิดเสียง"} title={sound.enabled ? "ปิดเสียง" : "เปิดเสียง"}>
+              {sound.enabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
+            </button>
+          )}
           <button className="wins" onClick={() => setModal("history")} aria-label={`ประวัติการแข่งขัน ชนะ ${wins} ครั้ง`}><Trophy /><strong>{wins}</strong><span>ชนะ</span></button>
           {!titleScreen && <button className="hud-button" onClick={() => setModal("rules")} aria-label="วิธีเล่น" title="วิธีเล่น"><BookOpen /></button>}
           {!room && <button className="hud-button" onClick={signOut} disabled={pending || matchmaking.searching} aria-label="ออกจากระบบ" title="ออกจากระบบ"><LogOut /></button>}
@@ -389,26 +404,31 @@ export default function MorrisClub() {
               send={(command) => void send({ ...command, code, revision: room.revision })} />
             {error && <p className="stage-error" role="alert">{error}</p>}
           </>
+        ) : matchmaking.searching ? (
+          <MatchSearch cancel={matchmaking.cancel} />
         ) : (
-          <section className="title-menu" aria-labelledby="entry-title">
-            <h1 id="entry-title"><span>Morris</span> <span>Club</span></h1>
-            <div className="title-actions" role="group" aria-label="เมนูหลัก">
-              {matchmaking.searching ? (
-                <div className="queue-status" role="status"><GameLottie kind="loading" /><span>กำลังหาคู่แข่ง</span>
-                  <button className="outline" type="button" onClick={matchmaking.cancel}>ยกเลิก</button>
-                </div>
-              ) : <button className="title-option title-play" type="button" disabled={menuBusy} onClick={matchmaking.start}>
-                <Shuffle aria-hidden="true" /> สุ่มเล่นออนไลน์
-              </button>}
-              <button className="title-option" type="button" disabled={menuBusy} onClick={() => send({ op: "create" }, true)}>
-                <Swords aria-hidden="true" /> สร้างห้องใหม่
+          <section className="club-home" aria-labelledby="entry-title">
+            <div className="club-home-menu">
+              <h1 id="entry-title" className="club-home-title">Morris <span>Club</span></h1>
+              <p className="club-greeting">สวัสดี <strong>{name}</strong></p>
+              <button className="club-quick-play" type="button" disabled={menuBusy} onClick={() => {
+                sound.cue("search");
+                void matchmaking.start();
+              }}>
+                <span className="club-quick-icon"><Shuffle aria-hidden="true" /></span>
+                สุ่มเล่นออนไลน์ <ArrowRight className="club-quick-arrow" aria-hidden="true" />
               </button>
-              <button ref={joinButton} className="title-option" type="button" aria-expanded={joinOpen} aria-controls="title-join" disabled={menuBusy}
-                onClick={() => {
-                  setShowJoin(!joinOpen);
-                  setError("");
-                  if (!joinOpen) window.requestAnimationFrame(() => joinInput.current?.focus());
-                }}>เข้าร่วมห้อง</button>
+              <div className="club-room-actions" role="group" aria-label="เล่นกับเพื่อน">
+                <button type="button" disabled={menuBusy} onClick={() => send({ op: "create" }, true)}>
+                  <Swords aria-hidden="true" /> สร้างห้องใหม่
+                </button>
+                <button ref={joinButton} type="button" aria-expanded={joinOpen} aria-controls="title-join" disabled={menuBusy}
+                  onClick={() => {
+                    setShowJoin(!joinOpen);
+                    setError("");
+                    if (!joinOpen) window.requestAnimationFrame(() => joinInput.current?.focus());
+                  }}><DoorOpen aria-hidden="true" /> เข้าร่วมห้อง</button>
+              </div>
               <form id="title-join" className="join title-join" hidden={!joinOpen}
                 onSubmit={(event) => { event.preventDefault(); void send({ op: "join", code: joinCode }, true); }}
                 onKeyDown={(event) => {
@@ -423,20 +443,21 @@ export default function MorrisClub() {
                   onChange={(event) => setJoinCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />
                 <button className="outline" type="submit" disabled={menuBusy || !roomCode.test(joinCode)}>เข้าห้อง <ArrowRight aria-hidden="true" /></button>
               </form>
-              <button className="title-option" type="button" onClick={() => setModal("leaderboard")}><Trophy aria-hidden="true" /> อันดับโลก</button>
-              <button className="title-option" type="button" onClick={() => setModal("rules")}>วิธีเล่น</button>
+              {(error || matchmaking.error) && <p className="title-error" role="alert">{error || matchmaking.error}</p>}
             </div>
-            <div className="club-feature-actions">
-              <button className="title-option" type="button" aria-haspopup="dialog" disabled={menuBusy} onClick={() => { setModal("friends"); void social.refresh(); }}>
+            <ClubPreview />
+            <nav className="club-home-nav" aria-label="เมนูสโมสร">
+              <button type="button" aria-haspopup="dialog" disabled={menuBusy} onClick={() => { setModal("friends"); void social.refresh(); }}>
                 <UsersRound aria-hidden="true" /> เพื่อน
                 {socialNotices > 0 && <small aria-label={`${socialNotices} รายการใหม่`}>{socialNotices}</small>}
               </button>
-              <button className="title-option" type="button" aria-haspopup="dialog" disabled={menuBusy} onClick={openShop}>
+              <button type="button" aria-haspopup="dialog" disabled={menuBusy} onClick={openShop}>
                 <ShoppingBag aria-hidden="true" /> ร้านค้า
                 {shop.state && <small aria-label={`${shop.state.coins} เหรียญ`}>{shop.state.coins}</small>}
               </button>
-            </div>
-            {(error || matchmaking.error) && <p className="title-error" role="alert">{error || matchmaking.error}</p>}
+              <button type="button" aria-haspopup="dialog" onClick={() => setModal("leaderboard")}><Trophy aria-hidden="true" /> อันดับโลก</button>
+              <button type="button" aria-haspopup="dialog" onClick={() => setModal("rules")}><BookOpen aria-hidden="true" /> วิธีเล่น</button>
+            </nav>
           </section>
         )}
       </main>

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { captures, count, placing, points, targets, type Game, type Side } from "@/lib/morris";
 
 import { characters, colors, type Character, type PieceColor } from "@/lib/rooms";
@@ -5,7 +6,7 @@ import { characters, colors, type Character, type PieceColor } from "@/lib/rooms
 export function Board({ game, palette, active, selected, onPoint, impact }: {
   game: Game;
   palette: Record<Side, PieceColor>;
-  impact: { at: number; color: PieceColor; revision: number } | null;
+  impact: { at: number; color: PieceColor; revision: number; own: boolean } | null;
   active: boolean;
   selected: number | null;
   onPoint: (at: number) => void;
@@ -43,17 +44,26 @@ export function Board({ game, palette, active, selected, onPoint, impact }: {
           ><span key={piece && at === game.last ? `${piece}-latest` : piece ?? "empty"} /></button>
         );
       })}
-      {impact && impactPoint && <div className={`capture-impact color-${impact.color}`} key={impact.revision}
+      {impact && impactPoint && <div className={`capture-impact color-${impact.color}`} data-own={impact.own} key={impact.revision}
         style={{ left: `${impactPoint[0]}%`, top: `${impactPoint[1]}%` }} aria-hidden="true">
-        <span className="impact-ring" />
-        <span className="captured-piece" />
-        {Array.from({ length: 8 }, (_, i) => <i key={i} style={{ rotate: `${i * 45}deg` }} />)}
+        <span className="impact-ring impact-ring-inner" />
+        <span className="impact-ring impact-ring-outer" />
+        <span className="captured-piece captured-piece-left" />
+        <span className="captured-piece captured-piece-right" />
+        <span className="impact-slash" />
+        {Array.from({ length: 10 }, (_, i) => (
+          <i className="impact-spark" key={i} style={{
+            "--spark-angle": `${i * 36 + (i % 2 ? 9 : 0)}deg`,
+            "--spark-distance": `${i % 3 === 0 ? -113 : -76}%`,
+          } as CSSProperties} />
+        ))}
+        <b className="impact-count">{impact.own ? "+1" : "−1"}</b>
       </div>}
     </div>
   );
 }
 
-export function Player({ side, game, current, you, character, color, name, taken }: {
+export function Player({ side, game, current, you, character, color, name, taken, capturePulse }: {
   side: Side;
   game: Game;
   current: boolean;
@@ -62,6 +72,7 @@ export function Player({ side, game, current, you, character, color, name, taken
   name: string;
   color: PieceColor;
   taken: number;
+  capturePulse: boolean;
 }) {
   const onBoard = count(game, side);
   const inHand = game.reserve[side];
@@ -73,7 +84,7 @@ export function Player({ side, game, current, you, character, color, name, taken
       <div className="piece-tallies">
         <div><strong>{onBoard}</strong><span>บนกระดาน</span></div>
         <div><strong>{inHand}</strong><span>ในมือ</span></div>
-        <div className="capture-tally" role="group" aria-label={`กินได้ ${taken} ตัว`}><strong key={taken}>{taken}</strong><span>กินได้</span></div>
+        <div className="capture-tally" data-pulse={capturePulse} role="group" aria-label={`กินได้ ${taken} ตัว`}><strong key={taken}>{taken}</strong><span>กินได้</span></div>
       </div>
       <div className="piece-rack" aria-hidden="true">{Array.from({ length: 9 }, (_, i) => <i key={i} data-filled={i < onBoard + inHand} />)}</div>
     </section>
