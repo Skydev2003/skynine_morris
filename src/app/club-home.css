@@ -427,3 +427,63 @@
 }
 .quick-roster-card:has(:checked) .quick-roster-check { visibility: visible; }
 .quick-roster-start { min-height: 48px; justify-content: center; font-size: 18px; }
+
+.club-daily {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 11px;
+  padding: 6px 10px;
+  border: 1px solid #fdf7d5;
+  border-radius: 12px;
+  background: #fff9e8;
+  box-shadow: 0 3px 0 #bc9361, 0 6px 12px #153c4e40;
+  color: #15495b;
+  text-align: start;
+  font-weight: 850;
+  font-size: clamp(15px, 1.6vw, 19px);
+}
+.club-daily:hover:not(:disabled) { background: #fff1c6; }
+.club-daily:disabled { opacity: .65; }
+.club-daily small, .daily-prize {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: 8px;
+  background: #ffe5a4;
+  color: #714318;
+  font-size: 12px;
+  font-weight: 820;
+  white-space: nowrap;
+  --coin-size: 16px;
+}
+.club-daily small { margin-inline-start: auto; }
+
+.daily-challenge {
+  --feature-ink: #153e52;
+  width: min(calc(100% - 24px), 530px);
+  background: #f9fcf0;
+}
+.daily-goal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px 8px;
+  margin-block: 8px 12px;
+}
+.daily-goal p, .daily-hint { margin: 0; color: #204b58; font-weight: 750; }
+.daily-board { display: grid; justify-items: center; padding-bottom: 8px; }
+.daily-board .board { width: min(100%, 420px, 60svh); }
+.daily-board .point[data-hint="true"] span {
+  outline: 2px solid #793800;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px #ffcb4f;
+}
+.daily-hint-button { color: #215465; margin-top: 8px; }
+.daily-hint { margin-top: 6px; font-size: 14px; }
+.daily-complete .coin-icon { display: inline-grid; vertical-align: middle; }

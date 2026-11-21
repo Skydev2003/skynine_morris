@@ -9,6 +9,7 @@ import { ClubShop } from "./club-shop";
 import { QuickCharacterPicker } from "./quick-character-picker";
 import { ClubPreview } from "./club-preview";
 import { Dialog } from "./dialog";
+import { DailyChallenge } from "./daily-challenge";
 import { GameDetails } from "./game-details";
 import { Leaderboard } from "./leaderboard";
 import { MatchResult } from "./match-result";
@@ -16,11 +17,12 @@ import { MatchStage } from "./match-stage";
 import { googleAvatar, PlayerAvatar, PlayerProfile } from "./player-profile";
 import { RoomLobby } from "./room-lobby";
 import { GameLottie } from "./game-lottie";
-import { ArrowLeft, ArrowRight, BookOpen, DoorOpen, LogOut, Music2, ShoppingBag, Shuffle, Swords, Trophy, UsersRound, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CalendarDays, DoorOpen, LogOut, Music2, ShoppingBag, Shuffle, Swords, Trophy, UsersRound, Volume2, VolumeX } from "lucide-react";
 import { captures, placing, play, targets, type Action } from "@/lib/morris";
 import { browserDb, googleInviteKey, onlineConfigured } from "@/lib/browser-db";
 import { playerName, roomCode, turnSeconds, type Match, type QuickLoadout, type Room } from "@/lib/rooms";
 import { useArenaAudio } from "@/lib/arena-audio";
+import { DAILY_COINS } from "@/lib/daily-puzzle";
 import { localTimeout, localTurn, opponentMove, resetOpponentMatch } from "@/lib/opponent";
 import { useMatchmaking } from "@/lib/use-matchmaking";
 import { socialApi, type SocialLookup } from "@/lib/social";
@@ -28,7 +30,7 @@ import { useSocial } from "@/lib/use-social";
 import { useShop } from "@/lib/use-shop";
 import { useMorris } from "@/lib/store";
 
-type Modal = "rules" | "history" | "leaderboard" | "friends" | "invite" | "shop" | "quick-character";
+type Modal = "rules" | "history" | "leaderboard" | "friends" | "invite" | "shop" | "quick-character" | "daily";
 
 export default function MorrisClub() {
   const state = useMorris();
@@ -431,6 +433,10 @@ export default function MorrisClub() {
                     if (!joinOpen) window.requestAnimationFrame(() => joinInput.current?.focus());
                   }}><DoorOpen aria-hidden="true" /> เข้าร่วมห้อง</button>
               </div>
+              <button className="club-daily" type="button" aria-haspopup="dialog" disabled={menuBusy} onClick={() => setModal("daily")}>
+                <CalendarDays aria-hidden="true" /> ด่านประจำวัน
+                <small><CoinIcon /> {DAILY_COINS} เหรียญ</small>
+              </button>
               <form id="title-join" className="title-join" hidden={!joinOpen}
                 onSubmit={(event) => { event.preventDefault(); void send({ op: "join", code: joinCode }, true); }}
                 onKeyDown={(event) => {
@@ -471,6 +477,11 @@ export default function MorrisClub() {
         end={() => room.rematch_closed ? leaveRoom() : void send({ op: "end", code, version: room.game_revision })} />}
 
       {modal === "leaderboard" && <Dialog title="อันดับโลก" close={() => setModal(null)}><Leaderboard /></Dialog>}
+
+      {modal === "daily" && <DailyChallenge token={session.access_token} close={() => setModal(null)} rewarded={(coins) => {
+        sound.cue("win");
+        if (coins) void shop.request({ op: "state" }).catch(() => {});
+      }} />}
 
       {modal === "rules" && <GameDetails title="วิธีเล่น Morris" close={() => setModal(null)} />}
 

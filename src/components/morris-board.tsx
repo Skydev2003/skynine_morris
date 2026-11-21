@@ -5,13 +5,14 @@ import { captures, count, placing, points, targets, type Game, type Side } from 
 
 import { characters, colors, type Character, type PieceColor } from "@/lib/rooms";
 
-export function Board({ game, palette, active, selected, onPoint, impact }: {
+export function Board({ game, palette, active, selected, onPoint, impact, hintPoints }: {
   game: Game;
   palette: Record<Side, PieceColor>;
   impact: { at: number; color: PieceColor; revision: number; own: boolean } | null;
   active: boolean;
   selected: number | null;
   onPoint: (at: number) => void;
+  hintPoints?: readonly number[];
 }) {
   const available = game.capture ? captures(game) : selected === null ? [] : targets(game, selected);
   const isPlacing = placing(game);
@@ -31,6 +32,7 @@ export function Board({ game, palette, active, selected, onPoint, impact }: {
       {points.map(([x, y], at) => {
         const piece = game.board[at];
         const choice = active && available.includes(at);
+        const hinted = hintPoints?.includes(at);
         const playable = active && (game.capture ? choice : isPlacing ? !piece : piece === game.turn || choice);
         return (
           <button
@@ -39,8 +41,9 @@ export function Board({ game, palette, active, selected, onPoint, impact }: {
             className={`point ${piece ? `piece color-${palette[piece]}` : "empty"} ${choice ? "choice" : ""} ${at === selected ? "selected" : ""} ${at === game.last && piece ? "last" : ""}`}
             style={{ left: `${x}%`, top: `${y}%` }}
             data-point={at}
+            data-hint={hinted || undefined}
             disabled={!playable}
-            aria-label={`จุด ${at + 1} ${piece ? `หมาก${colors[palette[piece]]}` : "ว่าง"}${choice ? " เลือกได้" : ""}`}
+            aria-label={`จุด ${at + 1} ${piece ? `หมาก${colors[palette[piece]]}` : "ว่าง"}${choice ? " เลือกได้" : ""}${hinted ? " คำใบ้" : ""}`}
             aria-pressed={at === selected}
             onClick={() => onPoint(at)}
           ><span key={piece && at === game.last ? `${piece}-latest` : piece ?? "empty"} /></button>
