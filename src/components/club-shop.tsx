@@ -5,15 +5,19 @@ import { Check, Sparkles } from "lucide-react";
 import { characters, colors } from "@/lib/rooms";
 import { frames, SHOP_ITEMS, type ProfileFrame, type ShopState, WIN_COINS } from "@/lib/shop";
 import { CoinBalance, CoinIcon } from "./coin";
+import { CoinTopUpPreview } from "./coin-top-up-preview";
 import { Dialog } from "./dialog";
 import { ProfileAvatar } from "./player-profile";
 
 type ShopItem = (typeof SHOP_ITEMS)[number];
 
+const topUpPreviewEnabled = process.env.NEXT_PUBLIC_MORRIS_TOPUP_PREVIEW === "true" || process.env.NEXT_PUBLIC_MORRIS_TOPUP_ENABLED === "true";
+
 const pieceNames = { ...colors, sky: "ฟ้าออโรรา", gold: "ทองประกาย" };
 
-export function ClubShop({ state, error, close, buy, equip, retry }: {
+export function ClubShop({ state, token, error, close, buy, equip, retry }: {
   state?: ShopState;
+  token: string;
   error?: string;
   close: () => void;
   buy: (item: ShopItem) => Promise<void>;
@@ -21,6 +25,7 @@ export function ClubShop({ state, error, close, buy, equip, retry }: {
   retry: () => void;
 }) {
   const [category, setCategory] = useState<ShopItem["kind"]>("character");
+  const [topUp, setTopUp] = useState(false);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<{ text: string; error?: boolean }>();
 
@@ -38,9 +43,20 @@ export function ClubShop({ state, error, close, buy, equip, retry }: {
     }
   }
 
+  if (topUpPreviewEnabled && topUp) {
+    return <Dialog title="ร้านค้า Morris" className="feature-dialog shop-dialog" close={close}>
+      <CoinTopUpPreview token={token} coins={state?.coins} refreshWallet={retry} back={() => setTopUp(false)} />
+    </Dialog>;
+  }
+
   return (
     <Dialog title="ร้านค้า Morris" className="feature-dialog shop-dialog" close={close}>
-      <CoinBalance coins={state?.coins} />
+      <div className="top-up-toolbar">
+        <CoinBalance coins={state?.coins} />
+        {topUpPreviewEnabled && <button className="outline top-up-entry" type="button" disabled={pending} onClick={() => setTopUp(true)}>
+          <CoinIcon /> {process.env.NEXT_PUBLIC_MORRIS_TOPUP_ENABLED === "true" ? "เติมเหรียญ" : "พรีวิวเติมเหรียญ"}
+        </button>}
+      </div>
       <p className="feature-intro">ชนะผู้เล่นออนไลน์ รับ {WIN_COINS} เหรียญต่อตา</p>
       {error && <p className="feature-error" role="alert">{error} <button type="button" className="outline" onClick={retry}>ลองใหม่</button></p>}
       {!state && !error && <p className="feature-empty" role="status">กำลังเปิดร้านค้า…</p>}

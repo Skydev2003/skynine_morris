@@ -1,5 +1,6 @@
 import { createGame, isAction, placing, play, targets, type Action, type Game, type Side } from "./morris";
 
+export const DAILY_PUZZLE_ENABLED = false;
 export const DAILY_COINS = 20;
 type Goal = "mill" | "block";
 type Layout = { mint: number[]; rose: number[]; clue: number[]; goal: Goal; moving?: true };

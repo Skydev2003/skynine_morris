@@ -1,11 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
-import { DAILY_COINS, dailyPuzzle, solveDailyPuzzle } from "@/lib/daily-puzzle";
+import { DAILY_COINS, DAILY_PUZZLE_ENABLED, dailyPuzzle, solveDailyPuzzle } from "@/lib/daily-puzzle";
 import { roomDb } from "@/lib/room-db";
 
 const auth = { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false };
 const reply = (error: string, status: number) => Response.json({ error }, { status });
 
 export async function POST(request: Request) {
+  if (!DAILY_PUZZLE_ENABLED) return reply("ด่านประจำวันปิดชั่วคราว", 404);
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const database = process.env.DATABASE_URL;

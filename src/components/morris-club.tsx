@@ -22,7 +22,7 @@ import { captures, placing, play, targets, type Action } from "@/lib/morris";
 import { browserDb, googleInviteKey, onlineConfigured } from "@/lib/browser-db";
 import { playerName, roomCode, turnSeconds, type Match, type QuickLoadout, type Room } from "@/lib/rooms";
 import { useArenaAudio } from "@/lib/arena-audio";
-import { DAILY_COINS } from "@/lib/daily-puzzle";
+import { DAILY_COINS, DAILY_PUZZLE_ENABLED } from "@/lib/daily-puzzle";
 import { localTimeout, localTurn, opponentMove, resetOpponentMatch } from "@/lib/opponent";
 import { useMatchmaking } from "@/lib/use-matchmaking";
 import { socialApi, type SocialLookup } from "@/lib/social";
@@ -433,10 +433,10 @@ export default function MorrisClub() {
                     if (!joinOpen) window.requestAnimationFrame(() => joinInput.current?.focus());
                   }}><DoorOpen aria-hidden="true" /> เข้าร่วมห้อง</button>
               </div>
-              <button className="club-daily" type="button" aria-haspopup="dialog" disabled={menuBusy} onClick={() => setModal("daily")}>
+              {DAILY_PUZZLE_ENABLED && <button className="club-daily" type="button" aria-haspopup="dialog" disabled={menuBusy} onClick={() => setModal("daily")}>
                 <CalendarDays aria-hidden="true" /> ด่านประจำวัน
                 <small><CoinIcon /> {DAILY_COINS} เหรียญ</small>
-              </button>
+              </button>}
               <form id="title-join" className="title-join" hidden={!joinOpen}
                 onSubmit={(event) => { event.preventDefault(); void send({ op: "join", code: joinCode }, true); }}
                 onKeyDown={(event) => {
@@ -478,7 +478,7 @@ export default function MorrisClub() {
 
       {modal === "leaderboard" && <Dialog title="อันดับโลก" close={() => setModal(null)}><Leaderboard /></Dialog>}
 
-      {modal === "daily" && <DailyChallenge token={session.access_token} close={() => setModal(null)} rewarded={(coins) => {
+      {DAILY_PUZZLE_ENABLED && modal === "daily" && <DailyChallenge token={session.access_token} close={() => setModal(null)} rewarded={(coins) => {
         sound.cue("win");
         if (coins) void shop.request({ op: "state" }).catch(() => {});
       }} />}
@@ -500,7 +500,7 @@ export default function MorrisClub() {
           void matchmaking.start(loadout);
         }} />}
 
-      {modal === "shop" && <ClubShop state={shop.state} error={shop.error} close={() => setModal(null)}
+      {modal === "shop" && <ClubShop token={session.access_token} state={shop.state} error={shop.error} close={() => setModal(null)}
         retry={() => void shop.request({ op: "state" }).catch(() => {})}
         buy={({ kind, id }) => shop.request({ op: "buy", kind, id })}
         equip={(id) => shop.request({ op: "equip", id })} />}
