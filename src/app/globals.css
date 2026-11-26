@@ -307,9 +307,6 @@ dialog p { color: var(--soft); margin: 8px 0 12px; }
 .portrait-rio { --roster-art: url("/roster/rio.jpg"); }
 .portrait-luna { --roster-art: url("/roster/luna.jpg"); }
 .portrait-pippin { --roster-art: url("/roster/pippin.jpg"); }
-.portrait-hikaru { --roster-art: url("/roster/shop-hikaru.webp"); }
-.portrait-akira { --roster-art: url("/roster/shop-akira.webp"); }
-.portrait-sai { --roster-art: url("/roster/shop-sai.webp"); }
 :is(.loadout-portrait, .duelist-portrait, .picker-portrait):not(.portrait-kai, .portrait-momo) {
   background-image: var(--roster-art);
   background-size: cover;

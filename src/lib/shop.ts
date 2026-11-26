@@ -18,9 +18,6 @@ export type ShopItem =
   | { kind: "frame"; id: ProfileFrame; price: number };
 
 export const SHOP_ITEMS: readonly ShopItem[] = [
-  { kind: "character", id: "hikaru", price: 180 },
-  { kind: "character", id: "akira", price: 180 },
-  { kind: "character", id: "sai", price: 210 },
   { kind: "character", id: "matcha", price: 90 },
   { kind: "character", id: "sunny", price: 120 },
   { kind: "character", id: "rio", price: 120 },

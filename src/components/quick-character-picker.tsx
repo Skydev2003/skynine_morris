@@ -15,7 +15,7 @@ export function QuickCharacterPicker({ inventory, previous, close, start }: {
   const [pickedCharacter, setPickedCharacter] = useState(previous?.character);
   const [pickedColor, setPickedColor] = useState(previous?.color);
   const selectedCharacter = pickedCharacter && availableCharacters.includes(pickedCharacter)
-    ? pickedCharacter : availableCharacters.includes("hikaru") ? "hikaru" : "kai";
+    ? pickedCharacter : "kai";
   const selectedColor = pickedColor && availableColors.includes(pickedColor) ? pickedColor : "mint";
 
   return (

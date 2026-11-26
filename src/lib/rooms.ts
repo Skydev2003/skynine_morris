@@ -36,7 +36,6 @@ export type Match = { room_code: string; game_revision: number; winner_id: strin
 export const characters = {
   kai: "ไค", momo: "โมโมะ", matcha: "มัทฉะ", sunny: "ซันนี่",
   rio: "ริโอ", luna: "ลูน่า", pippin: "พิปปิน",
-  hikaru: "ฮิคารุ", akira: "อากิระ", sai: "ซาอิ",
 } as const;
 export const turnSeconds = 60;
 

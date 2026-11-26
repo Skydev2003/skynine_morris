@@ -15,9 +15,7 @@ export function ClubPreview() {
         <span className="club-preview-mill" />
       </div>
       <div className="club-preview-player club-preview-luna" />
-      <div className="club-preview-player club-preview-hikaru portrait-hikaru">
-        <span>ฮิคารุ</span>
-      </div>
+      <div className="club-preview-player club-preview-rio portrait-rio" />
     </div>
   );
 }
