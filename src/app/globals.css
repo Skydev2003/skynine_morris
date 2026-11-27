@@ -649,6 +649,7 @@ dialog p { color: var(--soft); margin: 8px 0 12px; }
 .game-ticket :is(.feedback, .success) { font-size: 16px; font-weight: 650; }
 .access-world { padding-block: max(72px, calc(env(safe-area-inset-top) + 62px)) 26px; }
 .access-actions .title-option { padding-inline: clamp(12px, 2vw, 20px); }
+.access-actions .access-guest { min-height: 46px; font-size: clamp(18px, 2.2vw, 25px); }
 .access-actions .title-option:disabled { background: #322346df; opacity: 1; color: #e3d7ef; text-shadow: none; }
 .google-signin {
   width: clamp(64px, 7vw, 82px); aspect-ratio: 1; padding: 0;

@@ -12,7 +12,7 @@ export function MatchStage({ room, confirmed, cue, side, accessToken, ownProfile
   confirmed: Room;
   cue: (name: "place" | "capture" | "capture-hit" | "win" | "loss" | "start") => void;
   side: Side;
-  accessToken: string;
+  accessToken?: string;
   ownProfile: MatchProfile;
   selected: number | null;
   pending: boolean;
@@ -41,7 +41,7 @@ export function MatchStage({ room, confirmed, cue, side, accessToken, ownProfile
   const rivalProfile = profileSnapshot?.key === profileKey ? profileSnapshot.profiles[rival] : undefined;
 
   useEffect(() => {
-    if (localMatch || !guestId) return;
+    if (localMatch || !guestId || !accessToken) return;
     const controller = new AbortController();
     async function loadProfiles() {
       const response = await fetch("/api/rooms", {

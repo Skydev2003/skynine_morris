@@ -23,7 +23,7 @@ import { browserDb, googleInviteKey, onlineConfigured } from "@/lib/browser-db";
 import { playerName, roomCode, turnSeconds, type Match, type QuickLoadout, type Room } from "@/lib/rooms";
 import { useArenaAudio } from "@/lib/arena-audio";
 import { DAILY_COINS, DAILY_PUZZLE_ENABLED } from "@/lib/daily-puzzle";
-import { localTimeout, localTurn, opponentMove, resetOpponentMatch } from "@/lib/opponent";
+import { createOpponentMatch, localTimeout, localTurn, opponentMove, resetOpponentMatch } from "@/lib/opponent";
 import { useMatchmaking } from "@/lib/use-matchmaking";
 import { socialApi, type SocialLookup } from "@/lib/social";
 import { useSocial } from "@/lib/use-social";
@@ -44,7 +44,7 @@ export default function MorrisClub() {
   const [nameInput, setNameInput] = useState("");
   const [authReady, setAuthReady] = useState(!onlineConfigured);
   const code = room?.code;
-  const side = room && (room.host_id === userId ? "mint" : "rose");
+  const side = room && (room.local_match || room.host_id === userId ? "mint" : "rose");
   const [modal, setModal] = useState<Modal | null>(null);
   const [quickChoice, setQuickChoice] = useState<{ userId: string; loadout: QuickLoadout }>();
   const [error, setError] = useState("");
@@ -195,7 +195,7 @@ export default function MorrisClub() {
   }, [roomReaction, reactionTime]);
 
   async function send(input: Record<string, unknown>, open = false) {
-    if (!session || socialBusy.current) return;
+    if (socialBusy.current) return;
     if (room?.local_match) {
       if (input.op === "end") leaveRoom();
       else if (input.op === "rematch") state.syncRoom({ ...room, host_rematch: true, revision: room.revision + 1 });
@@ -205,6 +205,7 @@ export default function MorrisClub() {
       }
       return;
     }
+    if (!session) return;
     if (busy.current) return;
     busy.current = true;
     setPending(true);
@@ -341,7 +342,47 @@ export default function MorrisClub() {
   }
 
   if (!authReady) return <main className="game-loading" role="status"><GameLottie kind="loading" /><span>กำลังเข้าสู่สนาม</span></main>;
-  if (!session) return <AuthScreen configured={onlineConfigured} />;
+
+  const matchStage = shownRoom && room?.started_at && side && (
+    <MatchStage key={room.started_at} room={shownRoom} confirmed={room} cue={sound.cue} side={side} accessToken={session?.access_token}
+      ownProfile={{ photo: session ? googleAvatar(session.user) : undefined, frame: shop.state?.equippedFrame ?? null }}
+      selected={selected} pending={pending} reaction={room.reaction ? reaction : null} error={error} point={point}
+      expired={() => {
+        if (!prediction && room.turn_deadline && !room.game.winner) void send({ op: "timeout", code, version: room.game_revision });
+      }}
+      react={(emoji) => void send({ op: "react", code, emoji })} />
+  );
+  const matchResult = room?.finished_at && side && (
+    <MatchResult key={`${room.code}:${room.game_revision}`} room={room} side={side} pending={pending} error={error}
+      rematch={() => void send({ op: "rematch", code, version: room.game_revision })}
+      end={() => room.rematch_closed ? leaveRoom() : void send({ op: "end", code, version: room.game_revision })} />
+  );
+
+  if (!session) {
+    if (!room?.local_match) return <AuthScreen configured={onlineConfigured} startPractice={() => {
+      state.openRoom(createOpponentMatch("local-guest", "ผู้เยี่ยมชม", { character: "kai", color: "mint" }));
+    }} />;
+
+    return (
+      <main className="game-world stadium-world">
+        <GameLottie kind="ambient" />
+        <div className="world-corner corner-left">
+          <button className="hud-button" type="button" onClick={leaveRoom} aria-label="กลับหน้าเข้าเกม">
+            <ArrowLeft aria-hidden="true" /><span className="hud-label">กลับ</span>
+          </button>
+        </div>
+        <div className="world-corner corner-right">
+          <span className="hud-button guest-practice-label">โหมดฝึกกับบอต</span>
+          <button className="hud-button sound-toggle" type="button" data-sound-control onClick={sound.toggle}
+            aria-label={sound.enabled ? "ปิดเสียง" : "เปิดเสียง"}>
+            {sound.enabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
+          </button>
+        </div>
+        {matchStage}
+        {matchResult}
+      </main>
+    );
+  }
 
   const titleScreen = !room && Boolean(name) && !editingName;
   const joinOpen = showJoin ?? Boolean(joinCode);
@@ -397,14 +438,7 @@ export default function MorrisClub() {
         {!room && (!name || editingName) ? (
           <PlayerProfile user={session.user} wins={wins} coins={shop.state?.coins} name={nameInput} pending={pending} error={error}
             playerId={social.state?.playerId} frame={shop.state?.equippedFrame} setName={setNameInput} saveName={saveName} />
-        ) : shownRoom && room && side ? room.started_at ? (
-          <MatchStage key={room.started_at} room={shownRoom} confirmed={room} cue={sound.cue} side={side} accessToken={session.access_token}
-            ownProfile={{ photo: googleAvatar(session.user), frame: shop.state?.equippedFrame ?? null }} selected={selected} pending={pending} reaction={room.reaction ? reaction : null} error={error} point={point}
-            expired={() => {
-              if (!prediction && room.turn_deadline && !room.game.winner) void send({ op: "timeout", code, version: room.game_revision });
-            }}
-            react={(emoji) => void send({ op: "react", code, emoji })} />
-        ) : (
+        ) : shownRoom && room && side ? room.started_at ? matchStage : (
           <>
             <RoomLobby room={room} seat={side === "mint" ? "host" : "guest"} pending={pending} copied={copied} copy={copy}
               inventory={shop.state} openShop={openShop} invite={() => { setModal("invite"); void social.refresh(); }}
@@ -472,9 +506,7 @@ export default function MorrisClub() {
         )}
       </main>
 
-      {room?.finished_at && side && <MatchResult key={`${room.code}:${room.game_revision}`} room={room} side={side} pending={pending} error={error}
-        rematch={() => void send({ op: "rematch", code, version: room.game_revision })}
-        end={() => room.rematch_closed ? leaveRoom() : void send({ op: "end", code, version: room.game_revision })} />}
+      {matchResult}
 
       {modal === "leaderboard" && <Dialog title="อันดับโลก" close={() => setModal(null)}><Leaderboard /></Dialog>}
 

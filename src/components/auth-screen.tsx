@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import { ArrowLeft, ArrowRight, BookOpen, Eye, EyeOff, Mail } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { ArrowLeft, ArrowRight, BookOpen, Eye, EyeOff, Gamepad2, Mail } from "lucide-react";
 import { browserDb, googleInviteKey, googleSignInEnabled } from "@/lib/browser-db";
 import { useMorris } from "@/lib/store";
 import { GameLottie } from "./game-lottie";
 import { GameDetails } from "./game-details";
 
-export function AuthScreen({ configured }: { configured: boolean }) {
+export function AuthScreen({ configured, startPractice }: { configured: boolean; startPractice: () => void }) {
   const [emailOpen, setEmailOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [googleEnabled, setGoogleEnabled] = useState<boolean | null>(null);
   const [googlePending, setGooglePending] = useState(false);
+  const [guestPending, setGuestPending] = useState(false);
+  const guestBusy = useRef(false);
   const [signup, setSignup] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,7 +37,7 @@ export function AuthScreen({ configured }: { configured: boolean }) {
 
   async function signInWithGoogle() {
     const db = browserDb();
-    if (!db || pending || googlePending) return;
+    if (!db || pending || googlePending || guestBusy.current) return;
     setGooglePending(true);
     setFeedback(null);
     try {
@@ -54,10 +56,38 @@ export function AuthScreen({ configured }: { configured: boolean }) {
     }
   }
 
+  async function playAsGuest() {
+    if (pending || googlePending || guestBusy.current) return;
+    const db = browserDb();
+    if (!db) { startPractice(); return; }
+
+    guestBusy.current = true;
+    setGuestPending(true);
+    setFeedback(null);
+    try {
+      const suffix = crypto.randomUUID().slice(0, 4).toUpperCase();
+      const { data, error } = await db.auth.signInAnonymously({
+        options: { data: { player_name: `ผู้เยี่ยมชม ${suffix}` } },
+      });
+      if (error?.code === "anonymous_provider_disabled") {
+        startPractice();
+      } else if (data.session && !error) {
+        useMorris.getState().setSession(data.session);
+      } else {
+        setFeedback({ error: true, text: "เข้าเล่นแบบผู้เยี่ยมชมไม่สำเร็จ กรุณาลองใหม่" });
+      }
+    } catch {
+      setFeedback({ error: true, text: "เชื่อมต่อไม่ได้ กรุณาลองใหม่" });
+    } finally {
+      guestBusy.current = false;
+      setGuestPending(false);
+    }
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const db = browserDb();
-    if (!db || pending || googlePending) return;
+    if (!db || pending || googlePending || guestBusy.current) return;
     setFeedback(null);
     setPending(true);
     try {
@@ -106,11 +136,15 @@ export function AuthScreen({ configured }: { configured: boolean }) {
         <h1 id="access-title"><span>Morris</span> <span>Club</span></h1>
         {!emailOpen ? <div className="title-actions access-actions" role="group" aria-label="เมนูหน้าเข้าเกม">
           <button className="google-signin" type="button" aria-label="เข้าสู่ระบบด้วย Google" title="เข้าสู่ระบบด้วย Google"
-            disabled={!configured || googleEnabled === false || googlePending}
+            disabled={!configured || googleEnabled === false || googlePending || guestPending}
             aria-busy={googlePending} onClick={() => void signInWithGoogle()} />
           <button className="title-option" type="button"
-            disabled={googlePending} onClick={() => { setEmailOpen(true); setFeedback(null); }}>
+            disabled={googlePending || guestPending} onClick={() => { setEmailOpen(true); setFeedback(null); }}>
             <Mail aria-hidden="true" /> เล่นด้วยอีเมล
+          </button>
+          <button className="title-option title-play access-guest" type="button" aria-busy={guestPending}
+            disabled={googlePending || guestPending} onClick={() => void playAsGuest()}>
+            <Gamepad2 aria-hidden="true" /> {guestPending ? "กำลังเข้าสู่สนาม" : "เล่นแบบผู้เยี่ยมชม"}
           </button>
         </div> : <div className="game-ticket access-ticket">
           <div className="ticket-heading">
